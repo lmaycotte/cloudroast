@@ -1,5 +1,5 @@
 """
-Copyright 2014 Rackspace
+Copyright 2015 Rackspace
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,119 +15,20 @@ limitations under the License.
 """
 
 from IPy import IP
-import os
 import re
 import time
 
 from cafe.drivers.unittest.decorators import tags
-from cafe.engine.config import EngineConfig
 from cloudcafe.common.tools.datagen import rand_name
-from cloudcafe.compute.common.types import InstanceAuthStrategies
 from cloudroast.networking.networks.fixtures import NetworkingComputeFixture
+from cloudroast.networking.networks.scenario.common import \
+    ScenarioMixin
 
-NAMES_PREFIX = 'l2_routes_gateway'
 PING_PACKET_LOSS_REGEX = '(\d{1,3})\.?\d*\%.*loss'
 
 
-class Instance(object):
-
-    def __init__(self, entity, isolated_ips, remote_client):
-        self.entity = entity
-        for network_name, ip in isolated_ips.items():
-            setattr(self, network_name, ip)
-        self.remote_client = remote_client
-
-
-class L2HostroutesGatewayMixin(object):
-
-    """
-    This class provides utility methods for the test classes in this module
-    """
-
-    @classmethod
-    def _create_network_with_subnet(cls, name, cidr, allocation_pools=None,
-                                    gateway_ip=None):
-        create_name = '{}_{}'.format(rand_name(NAMES_PREFIX), name)
-        network = cls.networks_behaviors.create_network(
-            name=create_name,
-            use_exact_name=True).response.entity
-        cls.delete_networks.append(network.id)
-        subnet = cls.subnets_behaviors.create_subnet(
-            network.id, name=create_name, ip_version=cls.ip_version,
-            cidr=cidr, allocation_pools=allocation_pools,
-            gateway_ip=gateway_ip, use_exact_name=True).response.entity
-        cls.delete_subnets.append(subnet.id)
-        return network, subnet
-
-    @classmethod
-    def _create_server(cls, name, isolated_networks_to_connect,
-                       public_and_service=True):
-        networks = [{'uuid': net.id} for net in isolated_networks_to_connect]
-        if public_and_service:
-            networks.append({'uuid': cls.public_network_id})
-            networks.append({'uuid': cls.service_network_id})
-        server = cls.server_behaviors.create_active_server(
-            name='{}_{}'.format(rand_name(NAMES_PREFIX), name),
-            key_name=cls.keypair.name,
-            networks=networks).entity
-        cls.resources.add(server.id, cls.servers_client.delete_server)
-        isolated_ips = cls._get_server_isolated_ips(
-            server, isolated_networks_to_connect)
-        remote_client = None
-        if public_and_service:
-            public_ip = cls.server_behaviors.get_public_ip_address(server)
-            remote_client = cls.server_behaviors.get_remote_instance_client(
-                server, ip_address=public_ip, username='root',
-                key=cls.keypair.private_key,
-                auth_strategy=InstanceAuthStrategies.KEY)
-        return Instance(server, isolated_ips, remote_client)
-
-    @classmethod
-    def _get_server_isolated_ips(cls, server, isolated_networks):
-        ips = {}
-        for net in isolated_networks:
-            ips[net.name] = getattr(server.addresses,
-                                    net.name).addresses[0].addr
-        return ips
-
-    @classmethod
-    def _create_keypair(cls):
-        name = rand_name(NAMES_PREFIX)
-        cls.keypair = cls.keypairs_client.create_keypair(name).entity
-        cls.resources.add(name, cls.keypairs_client.delete_keypair)
-
-    def _next_sequential_cidr(self, cidr):
-        """
-        @summary: Computes the next sequential contiguous cidr to the one
-          provided as input. Both cidr's will have the same prefix size
-        @param cidr: A cidr that will be used as the base to compute the next
-          contiguous one
-        @type cidr: IPy.IP
-        @return: next contigous cidr
-        @rtype: IPy.IP
-        """
-        next_cidr_1st_ip = cidr[-1].ip + 1
-        return IP('{}/{}'.format(str(next_cidr_1st_ip),
-                                 str(cidr.prefixlen())))
-
-    def _execute_ssh_command(self, ssh_client, cmd):
-        response = ssh_client.execute_command(cmd)
-
-        # The only acceptable error message is the addition of the destination
-        # ip address to the known hosts list. Otherwise, fail the test
-        if (response.stderr and
-            ('Warning: Permanently added' not in response.stderr or
-             'to the list of known hosts' not in response.stderr)):
-            msg = 'Error executing command in test instance over ssh: {}'
-            msg = msg.format(response.stderr)
-            self.fail(msg)
-
-        # Command execution succeeded
-        return response.stdout
-
-
 class L2HostroutesGatewayTest(NetworkingComputeFixture,
-                              L2HostroutesGatewayMixin):
+                              ScenarioMixin):
 
     """
     This test verifies that host routes specified for Neutron subnets allow
@@ -152,6 +53,8 @@ class L2HostroutesGatewayTest(NetworkingComputeFixture,
     8. The test verifies that the vm connected only to the 'destination'
        network cannot ping the vm connected to the 'origin' network.
     """
+
+    PRIVATE_KEY_PATH = '/root/pkey'
 
     @classmethod
     def setUpClass(cls):
@@ -210,7 +113,7 @@ class L2HostroutesGatewayTest(NetworkingComputeFixture,
         # Attach router to a port in the destination network
         port = self.ports_behaviors.create_port(
             self.destination_network.id,
-            name='{}_{}'.format(rand_name(NAMES_PREFIX), 'attached_port'),
+            name='{}_{}'.format(rand_name(self.NAMES_PREFIX), 'attached_port'),
             device_id=self.router.entity.id,
             use_exact_name=True).response.entity
         self.delete_ports.append(port.id)
@@ -223,9 +126,11 @@ class L2HostroutesGatewayTest(NetworkingComputeFixture,
         # be added when dev team completes functionallity to attach vif's
         # to nova instances using device_id during port create / update
 
-    def _enable_ip_forwarding(self, ssh_client):
+    def _enable_ip_forwarding(self):
+        self.router.remote_client = self._get_remote_client(self.router)
         for cmd in self.ENABLE_IP_FORWARDING_CMDS:
-            self._execute_ssh_command(ssh_client, cmd)
+            self._execute_ssh_command(self.router.remote_client.ssh_client,
+                                      cmd)
 
     def _create_communicating_servers(self):
         self.origin = self._create_server('origin', [self.network_with_route])
@@ -233,6 +138,7 @@ class L2HostroutesGatewayTest(NetworkingComputeFixture,
                                                [self.destination_network])
 
         # Confirm routes are setup correctly in origin server
+        self.origin.remote_client = self._get_remote_client(self.origin)
         destination = self.destination_subnet.cidr[
             :self.destination_subnet.cidr.rindex('/')]
 
@@ -255,6 +161,8 @@ class L2HostroutesGatewayTest(NetworkingComputeFixture,
             route, msg)
 
         # Confirm routes are setup correctly in destination server
+        self.destination.remote_client = self._get_remote_client(
+            self.destination)
         origin = self.subnet_with_route.cidr[
             :self.subnet_with_route.cidr.rindex('/')]
         route_cmd = '{} -n | grep {}'.format(self.ROUTE_COMMAND, origin)
@@ -263,6 +171,15 @@ class L2HostroutesGatewayTest(NetworkingComputeFixture,
             route_cmd)
         msg = "Unexpected route was found in 'destination' server"
         self.assertFalse(route, msg)
+
+        # Transfer private key to origin and destination servers
+        self._transfer_private_key_to_vm(self.origin.remote_client.ssh_client,
+                                         self.keypair.private_key,
+                                         self.PRIVATE_KEY_PATH)
+        self._transfer_private_key_to_vm(
+            self.destination.remote_client.ssh_client,
+            self.keypair.private_key,
+            self.PRIVATE_KEY_PATH)
 
     def _set_host_routes(self):
         self.subnets_client.update_subnet(
@@ -281,19 +198,47 @@ class L2HostroutesGatewayTest(NetworkingComputeFixture,
             return False
         return packet_loss_percent != '100'
 
+    def _ssh(self, ssh_client, ip_address, cmd):
+        ssh_cmd = self.SSH_COMMAND.format(self.PRIVATE_KEY_PATH, ip_address,
+                                          cmd)
+        return ssh_client.execute_command(ssh_cmd)
+
     def _verify_expected_connectivity(self):
+        """
+        Verfies that the expected connectivity takes place after the scenario
+        has been set up:
+
+        1) The "origin" instance should be able to ping and ssh the
+        "destination" instance
+        2) The "destination" instance shouldn't be able to ping and ssh the
+        "origin" instance
+        """
+        # Confirm destination instance can be pinged and sshed from origin
+        # instance
+        origin_address = getattr(self.origin, self.network_with_route.name)
+        destination_address = getattr(self.destination,
+                                      self.destination_network.name)
         msg = ("Connectivity doesn't exist between two instances in two "
                "separate isolated networks connected with a router. Host "
                "routes were set up to enable this connectivity")
         self.assertTrue(self._ping(
-            self.origin.remote_client.ssh_client,
-            getattr(self.destination, self.destination_network.name)), msg)
+            self.origin.remote_client.ssh_client, destination_address), msg)
+        response = self._ssh(self.origin.remote_client.ssh_client,
+                             destination_address, 'pwd')
+        self.assertEqual(response.stdout.strip(), '/root', msg)
+
+        # Confirm origin instance cannot be pinged and sshed from destination
+        # instance
         msg = ("Connectivity exists unexpectedly between two instances in two "
                "separate isolated networks connected with a router. Host "
                "routes were not set up to enable this connectivity")
         self.assertFalse(self._ping(
-            self.destination.remote_client.ssh_client,
-            getattr(self.origin, self.network_with_route.name)), msg)
+            self.destination.remote_client.ssh_client, origin_address), msg)
+        response = self._ssh(self.destination.remote_client.ssh_client,
+                             origin_address, 'pwd')
+        if (('port 22: Connection timed out' not in response.stderr) and
+                ('port 22: No route to host' not in response.stderr)):
+            self.fail(msg)
 
     def _test_execute(self):
         self._create_networks()
@@ -301,7 +246,7 @@ class L2HostroutesGatewayTest(NetworkingComputeFixture,
         self._create_router()
         self._set_host_routes()
         self._create_communicating_servers()
-        self._enable_ip_forwarding(self.router.remote_client.ssh_client)
+        self._enable_ip_forwarding()
         self._verify_expected_connectivity()
 
 
@@ -317,6 +262,10 @@ class L2HostroutesGatewayTestIPv4(L2HostroutesGatewayTest):
     ENABLE_IP_FORWARDING_CMDS = [
         'iptables -t nat -A POSTROUTING -o eth3 -j MASQUERADE',
         'echo 1 > /proc/sys/net/ipv4/ip_forward']
+    SSH_COMMAND = ('ssh -o UserKnownHostsFile=/dev/null '
+                   '-o StrictHostKeyChecking=no -o ConnectTimeout=60 '
+                   '-i {} root@{} {}')
+    NAMES_PREFIX = 'routes_gateway_IPv4'
 
     @classmethod
     def setUpClass(cls):
@@ -334,7 +283,7 @@ class L2HostroutesGatewayTestIPv4(L2HostroutesGatewayTest):
 
 
 class GatewayPoliciesTest(NetworkingComputeFixture,
-                          L2HostroutesGatewayMixin):
+                          ScenarioMixin):
 
     """
     This class tests several Neutron policies regarding the assignment of
@@ -343,6 +292,8 @@ class GatewayPoliciesTest(NetworkingComputeFixture,
     one policy. Please refer to the docstring in each method for a description
     of the tested policy
     """
+
+    NAMES_PREFIX = 'gateway_policies'
 
     @classmethod
     def setUpClass(cls):
@@ -372,17 +323,11 @@ class GatewayPoliciesTest(NetworkingComputeFixture,
         # server. Since all the server's in this class will be created with
         # this keypair, the gateway server will be able to execute commands
         # over ssh in all of them
-        pkey_file_path = os.path.join(EngineConfig().temp_directory, 'pkey')
         remote_file_path = '/root/pkey'
-        with open(pkey_file_path, "w") as private_key_file:
-            private_key_file.write(cls.keypair.private_key)
-        cls.gateway.remote_client.ssh_client.transfer_file_to(
-            pkey_file_path, remote_file_path)
-        error = cls.gateway.remote_client.ssh_client.execute_command(
-            'chmod 600 {}'.format(remote_file_path)).stderr
-        msg = ('Error changing access permission to private key file in '
-               'gateway server')
-        assert not error, msg
+        cls.gateway.remote_client = cls._get_remote_client(cls.gateway)
+        cls._transfer_private_key_to_vm(cls.gateway.remote_client.ssh_client,
+                                        cls.keypair.private_key,
+                                        remote_file_path)
 
         # Create a ssh command stub that will be used in the gateway server to
         # execute commands remotely in the servers created by test methods in
@@ -405,6 +350,7 @@ class GatewayPoliciesTest(NetworkingComputeFixture,
         # time right after boot
         time.sleep(240)
 
+        self.gateway.remote_client = self._get_remote_client(self.gateway)
         ssh_cmd = '{}{} {}'.format(self.ssh_command_stub,
                                    getattr(vm, self.access_network.name),
                                    'route | grep default')
@@ -446,6 +392,7 @@ class GatewayPoliciesTest(NetworkingComputeFixture,
         time.sleep(240)
 
         # Confirm vm got expected default route
+        self.gateway.remote_client = self._get_remote_client(self.gateway)
         ssh_cmd = '{}{} {}'.format(self.ssh_command_stub,
                                    getattr(vm, self.access_network.name),
                                    'route | grep default')
@@ -488,6 +435,7 @@ class GatewayPoliciesTest(NetworkingComputeFixture,
         time.sleep(240)
 
         # Confirm vm got expected default route
+        self.gateway.remote_client = self._get_remote_client(self.gateway)
         ssh_cmd = '{}{} {}'.format(self.ssh_command_stub,
                                    getattr(vm, self.access_network.name),
                                    'route | grep default')
@@ -532,6 +480,7 @@ class GatewayPoliciesTest(NetworkingComputeFixture,
         time.sleep(240)
 
         # Confirm vm got expected route
+        self.gateway.remote_client = self._get_remote_client(self.gateway)
         range_origin = str(IP(cidr[0].ip))
         route_cmd = 'route -n | grep {}'.format(range_origin)
         ssh_cmd = '{}{} {}'.format(self.ssh_command_stub,
@@ -561,6 +510,10 @@ class L2HostroutesGatewayTestIPv6(L2HostroutesGatewayTest):
     ENABLE_IP_FORWARDING_CMDS = [
         'ip6tables -t nat -A POSTROUTING -o eth3 -j MASQUERADE',
         'echo 1 > /proc/sys/net/ipv6/conf/all/forwarding']
+    SSH_COMMAND = ('ssh -6 -o UserKnownHostsFile=/dev/null '
+                   '-o StrictHostKeyChecking=no -o ConnectTimeout=60 '
+                   '-i {} root@{} {}')
+    NAMES_PREFIX = 'routes_gateway_IPv6'
 
     @classmethod
     def setUpClass(cls):
