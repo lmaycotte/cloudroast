@@ -1468,7 +1468,7 @@ class SubnetCreateTest(NetworkingAPIFixture):
         self.assertNegativeResponse(
             resp=resp, status_code=NeutronResponseCodes.BAD_REQUEST, msg=msg,
             delete_list=self.delete_subnets,
-            error_type=NeutronErrorTypes.ADDR_FORMAT_ERROR)
+            error_type=NeutronErrorTypes.HTTP_BAD_REQUEST)
 
     @tags('positive', 'creator')
     def test_ipv6_subnet_create_w_dns_nameservers(self):
@@ -1530,7 +1530,7 @@ class SubnetCreateTest(NetworkingAPIFixture):
         self.assertNegativeResponse(
             resp=resp, status_code=NeutronResponseCodes.BAD_REQUEST, msg=msg,
             delete_list=self.delete_subnets,
-            error_type=NeutronErrorTypes.ADDR_FORMAT_ERROR)
+            error_type=NeutronErrorTypes.HTTP_BAD_REQUEST)
 
     @tags('positive', 'creator')
     def test_ipv4_subnet_create_w_host_routes(self):

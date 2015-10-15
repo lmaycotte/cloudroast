@@ -737,10 +737,11 @@ class PortUpdateTest(NetworkingAPIFixture):
 
         # Port update should be unavailable with security groups
         msg = '(negative) Updating a port with security groups'
+        error_type = (
+            NeutronErrorTypes.TENANT_NETWORK_SECURITY_GROUP_RULES_NOT_ENABLED)
         self.assertNegativeResponse(
             resp=resp, status_code=NeutronResponseCodes.BAD_REQUEST, msg=msg,
-            delete_list=self.delete_ports,
-            error_type=NeutronErrorTypes.SECURITY_GROUPS_NOT_IMPLEMENTED)
+            delete_list=self.delete_ports, error_type=error_type)
 
     @tags('negative', 'creator', 'quark')
     def test_ipv6_port_update_w_security_groups(self):
@@ -758,7 +759,8 @@ class PortUpdateTest(NetworkingAPIFixture):
 
         # Port update should be unavailable with security groups
         msg = '(negative) Updating a port with security groups'
+        error_type = (
+            NeutronErrorTypes.TENANT_NETWORK_SECURITY_GROUP_RULES_NOT_ENABLED)
         self.assertNegativeResponse(
             resp=resp, status_code=NeutronResponseCodes.BAD_REQUEST, msg=msg,
-            delete_list=self.delete_ports,
-            error_type=NeutronErrorTypes.SECURITY_GROUPS_NOT_IMPLEMENTED)
+            delete_list=self.delete_ports, error_type=error_type)
