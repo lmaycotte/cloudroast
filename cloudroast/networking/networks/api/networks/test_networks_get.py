@@ -81,7 +81,7 @@ class NetworkGetTest(NetworkingAPIFixture):
                 missing_networks, network_ids)
             self.fail(msg)
 
-    @tags('negative', 'observer', 'rcv3')
+    @tags('deprecated')
     def test_network_subnet_ids_do_not_show_for_public(self):
         """
         @summary: Get public network and check subnet IDs are NOT shown
@@ -98,7 +98,7 @@ class NetworkGetTest(NetworkingAPIFixture):
             self.public_network_id, network.subnets))
         self.assertEqual([], network.subnets, msg)
 
-    @tags('negative', 'observer')
+    @tags('deprecated')
     def test_network_subnet_ids_do_not_show_for_servicenet(self):
         """
         @summary: Get service network and check subnet IDs are NOT shown
