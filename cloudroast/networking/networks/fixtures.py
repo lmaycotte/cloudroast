@@ -715,7 +715,6 @@ class NetworkingSecurityGroupsFixture(NetworkingAPIFixture):
     def setUpClass(cls):
         super(NetworkingSecurityGroupsFixture, cls).setUpClass()
         cls.sec = SecurityGroupsComposite()
-
         # Data for creating security groups
         cls.security_group_data = dict(
             description='', security_group_rules=[], name='test_secgroup',
@@ -723,9 +722,9 @@ class NetworkingSecurityGroupsFixture(NetworkingAPIFixture):
 
         # Data for creating security group rules
         cls.security_group_rule_data = dict(
-            remote_group_id=None, direction='ingress', remote_ip_prefix=None,
-            protocol=None, ethertype='IPv4', port_range_max=None,
-            port_range_min=None,
+            remote_group_id=None, direction='ingress',
+            remote_ip_prefix=None, protocol=None, ethertype='IPv4',
+            port_range_max=None, port_range_min=None,
             tenant_id=cls.user.tenant_id)
 
         # Using the secGroupCleanup method
@@ -1143,7 +1142,7 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                 fmsg = msg.format(port_count=server_persona.pnet_port_count,
                                   n_ports=n_ports,
                                   server_id=server_persona.server.id,
-                                  netowork_id=self.public_network_id)
+                                  network_id=self.public_network_id)
                 failures.append(fmsg)
         if server_persona.snet_port_count:
             private_ports = server_persona.snet_ports
@@ -1154,7 +1153,7 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                 fmsg = msg.format(port_count=server_persona.snet_port_count,
                                   n_ports=n_ports,
                                   server_id=server_persona.server.id,
-                                  netowork_id=self.service_network_id)
+                                  network_id=self.service_network_id)
                 failures.append(fmsg)
         if server_persona.inet_port_count:
             isolated_ports = server_persona.inet_ports
@@ -1165,7 +1164,7 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                 fmsg = msg.format(port_count=server_persona.inet_port_count,
                                   n_ports=n_ports,
                                   server_id=server_persona.server.id,
-                                  netowork_id=server_persona.network.id)
+                                  network_id=server_persona.network.id)
                 failures.append(fmsg)
 
         # Fail the test if any failure is found
@@ -1187,7 +1186,8 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
         """
         failures = []
         msg = ('Expected {fix_ip_count} instead of {n_fix_ip} fixed IPs at '
-               'server {server_id} for network {network_id}')
+               'server {server_id} for network {network_id}. Current existing '
+               'fixed IPs: {fixed_ips}')
 
         if server_persona.pnet_fix_ipv4_count:
             public_fix_ipv4 = server_persona.pnet_fix_ipv4
@@ -1199,7 +1199,8 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                     fix_ip_count=server_persona.pnet_fix_ipv4_count,
                     n_fix_ip=n_public_fix_ipv4,
                     server_id=server_persona.server.id,
-                    netowork_id=self.public_network_id)
+                    network_id=self.public_network_id,
+                    fixed_ips=public_fix_ipv4)
                 failures.append(fmsg)
 
         if server_persona.pnet_fix_ipv6_count:
@@ -1212,7 +1213,8 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                     fix_ip_count=server_persona.pnet_fix_ipv6_count,
                     n_fix_ip=n_public_fix_ipv6,
                     server_id=server_persona.server.id,
-                    netowork_id=self.public_network_id)
+                    network_id=self.public_network_id,
+                    fixed_ips=public_fix_ipv6)
                 failures.append(fmsg)
 
         if server_persona.snet_fix_ipv4_count:
@@ -1225,7 +1227,8 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                     fix_ip_count=server_persona.snet_fix_ipv4_count,
                     n_fix_ip=n_private_fix_ipv4,
                     server_id=server_persona.server.id,
-                    netowork_id=self.service_network_id)
+                    network_id=self.service_network_id,
+                    fixed_ips=private_fix_ipv4)
                 failures.append(fmsg)
 
         if server_persona.snet_fix_ipv6_count:
@@ -1238,7 +1241,8 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                     fix_ip_count=server_persona.snet_fix_ipv6_count,
                     n_fix_ip=n_private_fix_ipv6,
                     server_id=server_persona.server.id,
-                    netowork_id=self.service_network_id)
+                    network_id=self.service_network_id,
+                    fixed_ips=private_fix_ipv6)
                 failures.append(fmsg)
 
         if server_persona.inet_fix_ipv4_count:
@@ -1251,7 +1255,8 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                     fix_ip_count=server_persona.inet_fix_ipv4_count,
                     n_fix_ip=n_isolated_fix_ipv4,
                     server_id=server_persona.server.id,
-                    netowork_id=self.network.id)
+                    network_id=self.network.id,
+                    fixed_ips=isolated_fix_ipv4)
                 failures.append(fmsg)
 
         if server_persona.inet_fix_ipv6_count:
@@ -1264,7 +1269,8 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                     fix_ip_count=server_persona.inet_fix_ipv6_count,
                     n_fix_ip=n_isolated_fix_ipv6,
                     server_id=server_persona.server.id,
-                    netowork_id=self.network.id)
+                    network_id=self.network.id,
+                    fixed_ips=isolated_fix_ipv6)
                 failures.append(fmsg)
 
         # Fail the test if any failure is found
@@ -1327,6 +1333,33 @@ class NetworkingIPAddressesFixture(NetworkingComputeFixture):
             keep_resources_on_failure=keep_failed_resources,
             failed_list=cls.failed_ip_addresses)
         cls.delete_ip_addresses = []
+
+    def create_test_ipaddress(self, expected_ip_address, delete=True):
+        """
+        @summary: creating a test IP address
+        @param expected_ip_address: IP address object with expected params
+        @type expected_ip_address: models.response.IPAddress
+        @return: ip address entity
+        @rtype: models.response.IPAddress
+        """
+        
+        # device_ids are not a default attribute of the IPAddress response
+        device_ids = getattr(expected_ip_address, 'device_ids', None)
+        
+        resp = self.ipaddr.behaviors.create_ip_address(
+            network_id=expected_ip_address.network_id,
+            version=expected_ip_address.version,
+            port_ids=expected_ip_address.port_ids, device_ids=device_ids,
+            raise_exception=False)
+        
+        self.assertFalse(resp.failures)        
+        ip_address = resp.response.entity
+        self.assertIPAddressResponse(expected_ip_address, ip_address)
+        print 'hello my little friend'
+        if delete:
+            self.delete_ip_addresses.append(ip_address.id)
+        
+        return ip_address
 
     def assertIPAddressResponse(self, expected_ip_address, ip_address,
                                 ip_range=None):

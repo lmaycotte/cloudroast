@@ -50,7 +50,7 @@ class IPAvailabilityTest(NetworkingAPIFixture):
     def tearDown(self):
         self.networkingCleanUp()
 
-    @tags('dev2')
+    @tags('smoke', 'positive', 'rbac_creator')
     def test_ipv4_isolated_network_availability(self):
         """
         @summary: Checking Network IP address allocations
