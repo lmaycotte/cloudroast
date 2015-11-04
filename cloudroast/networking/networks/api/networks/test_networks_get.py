@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import unittest
 from cafe.drivers.unittest.decorators import tags
 from cloudcafe.networking.networks.common.constants \
     import NeutronResponseCodes, NeutronErrorTypes
@@ -81,7 +82,7 @@ class NetworkGetTest(NetworkingAPIFixture):
                 missing_networks, network_ids)
             self.fail(msg)
 
-    @tags('deprecated')
+    @unittest.skip('deprecated')
     def test_network_subnet_ids_do_not_show_for_public(self):
         """
         @summary: Get public network and check subnet IDs are NOT shown
@@ -98,7 +99,7 @@ class NetworkGetTest(NetworkingAPIFixture):
             self.public_network_id, network.subnets))
         self.assertEqual([], network.subnets, msg)
 
-    @tags('deprecated')
+    @unittest.skip('deprecated')
     def test_network_subnet_ids_do_not_show_for_servicenet(self):
         """
         @summary: Get service network and check subnet IDs are NOT shown
