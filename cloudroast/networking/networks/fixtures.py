@@ -33,7 +33,7 @@ from cloudcafe.networking.networks.composites import NetworkingComposite
 from cloudcafe.networking.networks.config import NetworkingSecondUserConfig
 from cloudcafe.networking.networks.extensions.ip_addresses_api.composites \
     import IPAddressesComposite
-from cloudcafe.networking.networks.extensions.ip_addresses_api.models.response\
+from cloudcafe.networking.networks.extensions.ip_addresses_api.models.response \
     import IPAddress
 from cloudcafe.networking.networks.extensions.security_groups_api.composites \
     import SecurityGroupsComposite
@@ -1342,23 +1342,22 @@ class NetworkingIPAddressesFixture(NetworkingComputeFixture):
         @return: ip address entity
         @rtype: models.response.IPAddress
         """
-        
+
         # device_ids are not a default attribute of the IPAddress response
         device_ids = getattr(expected_ip_address, 'device_ids', None)
-        
+
         resp = self.ipaddr.behaviors.create_ip_address(
             network_id=expected_ip_address.network_id,
             version=expected_ip_address.version,
             port_ids=expected_ip_address.port_ids, device_ids=device_ids,
             raise_exception=False)
-        
-        self.assertFalse(resp.failures)        
+
+        self.assertFalse(resp.failures)
         ip_address = resp.response.entity
         self.assertIPAddressResponse(expected_ip_address, ip_address)
-        print 'hello my little friend'
         if delete:
             self.delete_ip_addresses.append(ip_address.id)
-        
+
         return ip_address
 
     def assertIPAddressResponse(self, expected_ip_address, ip_address,
