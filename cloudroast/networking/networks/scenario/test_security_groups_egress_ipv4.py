@@ -13,8 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-import re
 import time
 
 from cafe.drivers.unittest.decorators import tags
@@ -143,9 +141,6 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
         # Adding rules for remote client connectivity
         cls.create_ping_ssh_ingress_rules(
             sec_group_id=cls.sec_group_icmp_ipv4.id)
-        
-        cls.delete_secgroups = []
-        cls.delete_secgroups_rules = []  
       
         cls.security_group_ids = [cls.sec_group_tcp_ipv4.id,
                                   cls.sec_group_icmp_ipv4.id]
@@ -225,6 +220,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             username=SSH_USERNAME, key=self.keypair.private_key,
             auth_strategy=AUTH_STRATEGY)
 
+    @tags('publicnet', 'servicenet', 'isolatednet')
     def test_remote_client_connectivity(self):
         """
         @summary: Testing the remote clients
@@ -240,6 +236,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
                                        remote_client=self.spi_rc,
                                        sec_group=self.sec_group_icmp_ipv4)        
 
+    @tags('publicnet')
     def test_publicnet_ping(self):
         """
         @summary: Testing ping from other sender without security rules
@@ -247,6 +244,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
         ip_address = self.lp.pnet_fix_ipv4[0]
         self.verify_ping(remote_client=self.op_rc, ip_address=ip_address)        
 
+    @tags('servicenet')
     def test_servicenet_ping(self):
         """
         @summary: Testing ping from other sender without security rules
@@ -254,6 +252,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
         ip_address = self.lp.snet_fix_ipv4[0]
         self.verify_ping(remote_client=self.op_rc, ip_address=ip_address)
 
+    @tags('isolatednet')
     def test_isolatednet_ping(self):
         """
         @summary: Testing ping from other sender without security rules
@@ -261,6 +260,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
         ip_address = self.lp.inet_fix_ipv4[0]
         self.verify_ping(remote_client=self.op_rc, ip_address=ip_address)
 
+    @tags('publicnet')
     def test_publicnet_ping_w_icmp_egress(self):
         """
         @summary: Testing ICMP egress rule on publicnet
@@ -268,6 +268,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
         ip_address = self.lp.pnet_fix_ipv4[0]
         self.verify_ping(remote_client=self.spi_rc, ip_address=ip_address)
 
+    @tags('servicenet')
     def test_servicenet_ping_w_icmp_egress(self):
         """
         @summary: Testing ICMP egress rule on servicenet
@@ -282,6 +283,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
         ip_address = self.lp.inet_fix_ipv4[0]
         self.verify_ping(remote_client=self.spi_rc, ip_address=ip_address)
 
+    @tags('publicnet')
     def test_publicnet_ports_w_tcp(self):
         """
         @summary: Testing TCP ports on publicnet
@@ -293,6 +295,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
                                      port_range=TCP_PORT_RANGE,
                                      expected_data=TCP_EXPECTED_DATA)       
 
+    @tags('servicenet')
     def test_servicenet_ports_w_tcp(self):
         """
         @summary: Testing TCP ports on servicenet
@@ -304,6 +307,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
                                      port_range=TCP_PORT_RANGE,
                                      expected_data=TCP_EXPECTED_DATA)
 
+    @tags('isolatednet')
     def test_isolatednet_ports_w_tcp(self):
         """
         @summary: Testing TCP ports on isolatednet
@@ -315,6 +319,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
                                      port_range=TCP_PORT_RANGE,
                                      expected_data=TCP_EXPECTED_DATA)
 
+    @tags('publicnet')
     def test_publicnet_ports_w_tcp_egress(self):
         """
         @summary: Testing TCP egress rule on publicnet
@@ -326,6 +331,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
                                      port_range=TCP_PORT_RANGE,
                                      expected_data=TCP_RULE_EXPECTED_DATA)       
 
+    @tags('servicenet')
     def test_servicenet_ports_w_tcp_egress(self):
         """
         @summary: Testing TCP egress rule on servicenet
@@ -337,6 +343,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
                                      port_range=TCP_PORT_RANGE,
                                      expected_data=TCP_RULE_EXPECTED_DATA)
 
+    @tags('isolatednet')
     def test_isolatednet_ports_w_tcp_egress(self):
         """
         @summary: Testing TCP egress rule on isolatednet
@@ -348,6 +355,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
                                      port_range=TCP_PORT_RANGE,
                                      expected_data=TCP_RULE_EXPECTED_DATA)
 
+    @tags('isolatednet')
     def test_isolatednet_udp_port_750(self):
         """
         @summary: Testing UDP from other sender without security rules
@@ -363,6 +371,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.inet_fix_ipv4[0], port=UDP_PORT_750,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('isolatednet')
     def test_isolatednet_udp_port_749(self):
         """
         @summary: Testing UDP from other sender without security rules
@@ -378,6 +387,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.inet_fix_ipv4[0], port=UDP_PORT_749,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('isolatednet')
     def test_isolatednet_udp_port_750_w_udp_egress(self):
         """
         @summary: Testing UDP from sender with security egress rules on
@@ -392,6 +402,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.inet_fix_ipv4[0], port=UDP_PORT_750,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('isolatednet')
     def test_isolatednet_udp_port_749_w_udp_egress(self):
         """
         @summary: Testing UDP from sender with security egress rules on
@@ -407,6 +418,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.inet_fix_ipv4[0], port=UDP_PORT_749,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('servicenet')
     def test_servicenet_udp_port_750(self):
         """
         @summary: Testing UDP from other sender without security rules
@@ -422,6 +434,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.snet_fix_ipv4[0], port=UDP_PORT_750,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('servicenet')
     def test_servicenet_udp_port_749(self):
         """
         @summary: Testing UDP from other sender without security rules
@@ -437,6 +450,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.snet_fix_ipv4[0], port=UDP_PORT_749,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('servicenet')
     def test_servicenet_udp_port_750_w_udp_egress(self):
         """
         @summary: Testing UDP from sender with security egress rules on
@@ -451,6 +465,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.snet_fix_ipv4[0], port=UDP_PORT_750,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('servicenet')
     def test_servicenet_udp_port_749_w_udp_egress(self):
         """
         @summary: Testing UDP from sender with security egress rules on
@@ -466,6 +481,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.snet_fix_ipv4[0], port=UDP_PORT_749,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('publicnet')
     def test_publicnet_udp_port_750(self):
         """
         @summary: Testing UDP from other sender without security rules
@@ -481,6 +497,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.pnet_fix_ipv4[0], port=UDP_PORT_750,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('publicnet')
     def test_publicnet_udp_port_749(self):
         """
         @summary: Testing UDP from other sender without security rules
@@ -496,6 +513,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.pnet_fix_ipv4[0], port=UDP_PORT_749,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('publicnet')
     def test_publicnet_udp_port_750_w_udp_egress(self):
         """
         @summary: Testing UDP from sender with security egress rules on
@@ -510,6 +528,7 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
             listener_ip=self.lp.pnet_fix_ipv4[0], port=UDP_PORT_750,
             file_content=file_content, expected_data=expected_data)
 
+    @tags('publicnet')
     def test_publicnet_udp_port_749_w_udp_egress(self):
         """
         @summary: Testing UDP from sender with security egress rules on

@@ -13,8 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-import re
 import time
 
 from cafe.drivers.unittest.decorators import tags
@@ -51,7 +49,6 @@ class SecurityGroupsEgressIPv6Test(NetworkingComputeFixture):
     @classmethod
     def setUpClass(cls):
         super(SecurityGroupsEgressIPv6Test, cls).setUpClass()
-        """
         
         cls.fixture_log.debug('Creating the isolated network with IPv6 subnet')
         net_req = cls.networks.behaviors.create_network(name='sg_egress_net6')
@@ -95,78 +92,10 @@ class SecurityGroupsEgressIPv6Test(NetworkingComputeFixture):
         server_ids = [cls.listener.id, cls.sender.id, cls.icmp_sender.id,
                       cls.other_sender.id]
         
-        print cls.keypair
-        print network
-        print subnet6
-        print server_ids
-        print cls.listener.admin_pass
-        print cls.sender.admin_pass
-        print cls.icmp_sender.admin_pass
-        print cls.other_sender.admin_pass
-        
         cls.net.behaviors.wait_for_servers_to_be_active(
             server_id_list=server_ids)        
-        print 'active!!'
 
-        cls.delete_servers = []
-        cls.delete_keypairs = []
-        """
-        
-        #############for development w static servers#########
-        #"""
-        network = cls.networks.behaviors.get_network(
-            'b0655b95-d4d4-4dec-b882-844a3f2be917').response.entity
-        subnet6 = cls.subnets.behaviors.get_subnet(
-            'fc7eb91f-487b-4230-885e-4c6210f848a2').response.entity
-        cls.keypair = cls.keypairs.client.get_keypair(
-            'sg_test_key668ebec53').entity
-        cls.keypair.private_key = (u"""-----BEGIN RSA PRIVATE KEY-----
-MIIEqgIBAAKCAQEAsYptdcb6JSOW6fg19M3BJNfTQ999K/OvouNmdtftPwnVBRBj
-BLa0TAU9TLyFVM0SgWm0Q/mTPl+9IcDGEmlu07p77aOtQF+dtZRkx1iZQk1hE9x3
-1VnKluI819mtZ5/El2JjXkOHjqip9xq+HWUd3DhTgRsdXyBHskUA4L8RDf8OsbdH
-VYCkoWp+FRoEA1vaGsZu3pY3WzttHhiW+1tVvNQCp2oJ8ZvLrNd5y+TABIPIr1Lf
-8QMEN6/pExKW6OFa/9E8laHFETc1dA9pGJxGGRda7uupoP1mUGG8vAm52DMjVOoo
-o69sOHqg9x0X2JSBtDguEvXsqpBqQN4/YrT/7QIDAQABAoIBAQCYy+0mxwez/Ow+
-EuvE82u93K2rJWXh9Mj9JD6kG3PIpBqcUB0YCnIjVwMJztnlQNUjYajOM7ZAoT7y
-FKmjYPAL8twDirFpzKC7jKorUpocEOJyqHTNvoh30N/SWTo/C6azLu8cSnwZEBmv
-XGmwfLz1MdjULVTa8Lojt/Vod6gi5SYqtZmVPg/TUJ37pawvpg+1ykIoJjkKmVPN
-MHaC5f8TJIPXtt34A6aIcvPVpsfvfwa9w6anvHsu6ySC9JJ2rDuZSVH/IWEY/Ayg
-tkmvp6jqCjBvOn/airiA1MiLr7mEc6V/1kH/hsXvzGdsDPdv8IeidQZQ/wWndNsN
-7xsGrIyVAoIAgQC+oR2zv78Gzf0wmMDJkbWqn97VWrWVatNOewQ9gckZg+sLlZ18
-9928AlW5SEYZuI/INvUNvdS332R9YkRCDaPEJ0jqGT54wfF3A46wQ/XGMV1D/QhM
-OGK8el4NQtQcaMTDvn7u0BQXMQWUbXhKQYsbnZ3YmNZNpCqC/le5WTY5AwKCAIEA
-7mxLCU/sqpiktehtXO68hg2dqv8ij9NgBnYSZ1t6FtFVLIRZhrQZ8QUUiyGHmDPb
-ZD4F/nufm98QDTmRVBxmhexGySLhuEaysuAym6fejirXVv55dPptc9vF1X9DTrkj
-1DRVKxFH0kBGx6DJAIdrQaothu+V0kGj57XM4jrAeE8CggCBAKRmAF6PI6gzp4Hs
-in6LaddvLlZjdywXx4nsL1j3/71Adkk0S3CFtrU4ckNq4AG4mE87jhS+vJ+iSWCU
-iXdJmg1FL+2rvaOY5qwT5k9/HItC8UL8Cdbp3cTb5xaapqClfeOt+nvr+ReTEFPU
-IKQxaE11nbY5AMBOrtbvkCnplQiPAoIAgQCIXdAdJ2WJvXyXvrSubq3NToRbhUnT
-UWaey3GDREL0Qg6hQ6Gg9enQfMNfQHI5j49wKjlrcHG9yTt5FPAWV5gcCSQDbrwD
-lgwnWywW81DLp5062JnHWmS323+vuPZaVHI1sSj1VRDrJHBXRZMxhkLGb/tSLj5W
-38xLfyQMUOY86QKCAIB1oNw9twkNVf+KmvNHEPEEjgpBhYMOxAQBJQmJqbVwKKnN
-wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
-9LiJ/1SRuDssNKLPAO0Oan4mOMMyCAKGAb+VBl24krULZAlm7f+4mr9GyOUFlA==
------END RSA PRIVATE KEY-----""")
-        
-        server_ids = [u'5bfefa61-4947-46c9-9f0b-90c48d277c70',
-                      u'437af3e1-024a-4d30-bb8d-eada1e8709ca',
-                      u'cccb0707-9552-43c5-90e6-201a91eb9598',
-                      u'a1e6e0e4-2e93-4dd1-8bec-ab103a325844']
-        cls.listener = cls.net.behaviors.get_networking_server(
-            server_id=server_ids[0])
-        cls.listener.admin_pass = 'GtTAbUXwUn3M'
-        cls.sender = cls.net.behaviors.get_networking_server(
-            server_id=server_ids[1])
-        cls.sender.admin_pass = '3hU2WtCm8RDf'
-        cls.icmp_sender = cls.net.behaviors.get_networking_server(
-            server_id=server_ids[2])
-        cls.icmp_sender.admin_pass = 'Pd2jWyXyiFCw'
-        cls.other_sender = cls.net.behaviors.get_networking_server(
-            server_id=server_ids[3])
-        cls.other_sender.admin_pass = 'a9P7wq4pudSk'
-        #"""
-        ########################################################
-        """
+
         cls.fixture_log.debug('Creating the security groups and rules')
         
         # Creating the security group and rules for IPv6 TCP testing
@@ -215,29 +144,15 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
         cls.delete_secgroups_rules.append(egress_icmp_ipv6_rule.id)
 
         cls.create_ping_ssh_ingress_rules(
-            sec_group_id=cls.sec_group_icmp_ipv6.id)
-        
-        cls.delete_secgroups = []
-        cls.delete_secgroups_rules = []  
+            sec_group_id=cls.sec_group_icmp_ipv6.id) 
       
         cls.security_group_ids = [cls.sec_group_tcp_ipv6.id,
                                   cls.sec_group_icmp_ipv6.id]        
-        """
-        #############for development w static SGs#########
-        #"""
-        cls.security_group_ids = [u'fccf67da-4f3f-474a-9431-68ff01b81436',
-                                  u'fb4864c7-e371-43bf-ad3a-804741478e67']
-        #"""
+
         cls.sec_group_tcp_ipv6 = cls.sec.behaviors.get_security_group(
             cls.security_group_ids[0]).response.entity
         cls.sec_group_icmp_ipv6 = cls.sec.behaviors.get_security_group(
             cls.security_group_ids[1]).response.entity
-
-        print cls.security_group_ids
-        print cls.sec_group_tcp_ipv6
-        print cls.sec_group_icmp_ipv6
-
-        ####################################################
 
         cls.fixture_log.debug('Defining the server personas for quick port '
                               'and IP address access')
@@ -251,8 +166,7 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
         cls.spi = ServerPersona(server=cls.icmp_sender, inet=True,
                                 network=network, inet_port_count=1,
                                 inet_fix_ipv6_count=1) 
-                   
-        """
+
         cls.fixture_log.debug('Updating the TCP and ICMP sender servers ports '
                               'with security groups')
         sp_pnet_req = cls.ports.behaviors.update_port(
@@ -281,19 +195,11 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
             security_groups=[cls.security_group_ids[1]],
             raise_exception=True)
 
-        print cls.sp.pnet_ports
-        print cls.sp.snet_ports
-        print cls.sp.inet_ports
-        print cls.spi.pnet_ports
-        print cls.spi.snet_ports
-        print cls.spi.inet_ports    
-
-        """
-
-        print 'data plane delay {0}'.format(cls.sec.config.data_plane_delay)
-        #time.sleep(cls.sec.config.data_plane_delay)
+        delay_msg = 'data plane delay {0}'.format(
+            cls.sec.config.data_plane_delay)
+        cls.fixture_log.debug(delay_msg)
+        time.sleep(cls.sec.config.data_plane_delay)
    
-
     def setUp(self):        
         """ Creating the remote clients """
 
@@ -318,13 +224,9 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
             server=self.icmp_sender, ip_address=self.spi.pnet_fix_ipv4[0],
             username=SSH_USERNAME, key=self.keypair.private_key,
             auth_strategy=AUTH_STRATEGY)
-        
-        print self.lp_rc.can_authenticate()   
-        print self.op_rc.can_authenticate()
-        print self.sp_rc.can_authenticate()
-        print self.spi_rc.can_authenticate()
 
-    def test_remote_client_connectivity(self):
+    @tags('publicnet', 'isolatednet')
+    def test_remote_client_connectivity_v6(self):
         """
         @summary: Testing the remote clients
         """
@@ -339,8 +241,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
                                        remote_client=self.spi_rc,
                                        sec_group=self.sec_group_icmp_ipv6)        
 
-    @tags('dev5')
-    def test_publicnet_ping(self):
+    @tags('publicnet')
+    def test_publicnet_ping_v6(self):
         """
         @summary: Testing ping from other sender without security rules
         """
@@ -348,18 +250,18 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
         print ip_address
         self.verify_ping(remote_client=self.op_rc, ip_address=ip_address,
                          ip_version=6)
-    
-    @tags('dev5')
-    def test_isolatednet_ping(self):
+
+    @tags('isolatednet')    
+    def test_isolatednet_ping_v6(self):
         """
         @summary: Testing ping from other sender without security rules
         """
         ip_address = self.lp.inet_fix_ipv6[0]
         self.verify_ping(remote_client=self.op_rc, ip_address=ip_address,
                          ip_version=6)
-    
-    @tags('dev5')
-    def test_publicnet_ping_w_icmp_egress(self):
+
+    @tags('publicnet')    
+    def test_publicnet_ping_w_icmp_egress_v6(self):
         """
         @summary: Testing ICMP egress rule on publicnet
         """
@@ -367,8 +269,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
         self.verify_ping(remote_client=self.spi_rc, ip_address=ip_address,
                          ip_version=6)
 
-    @tags('dev5')
-    def test_isolatednet_ping_w_icmp_egress(self):
+    @tags('isolatednet')
+    def test_isolatednet_ping_w_icmp_egress_v6(self):
         """
         @summary: Testing ICMP egress rule on isolatednet
         """
@@ -376,8 +278,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
         self.verify_ping(remote_client=self.spi_rc, ip_address=ip_address,
                          ip_version=6)
 
-    @tags('dev7')
-    def test_publicnet_ports_w_tcp(self):
+    @tags('publicnet')
+    def test_publicnet_ports_w_tcp_v6(self):
         """
         @summary: Testing TCP ports on publicnet
         """
@@ -389,8 +291,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
                                      expected_data=TCP_EXPECTED_DATA,
                                      ip_version=6)       
 
-    @tags('dev7')
-    def test_isolatednet_ports_w_tcp(self):
+    @tags('isolatednet')
+    def test_isolatednet_ports_w_tcp_v6(self):
         """
         @summary: Testing TCP ports on isolatednet
         """
@@ -402,8 +304,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
                                      expected_data=TCP_EXPECTED_DATA,
                                      ip_version=6)
 
-    @tags('dev8')
-    def test_publicnet_ports_w_tcp_egress(self):
+    @tags('publicnet')
+    def test_publicnet_ports_w_tcp_egress_v6(self):
         """
         @summary: Testing TCP egress rule on publicnet
         """
@@ -415,8 +317,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
                                      expected_data=TCP_RULE_EXPECTED_DATA,
                                      ip_version=6)       
 
-    @tags('dev8')
-    def test_isolatednet_ports_w_tcp_egress(self):
+    @tags('isolatednet')
+    def test_isolatednet_ports_w_tcp_egress_v6(self):
         """
         @summary: Testing TCP egress rule on isolatednet
         """
@@ -428,8 +330,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
                                      expected_data=TCP_RULE_EXPECTED_DATA,
                                      ip_version=6)
 
-    @tags('dev9')
-    def test_isolatednet_udp_port_750(self):
+    @tags('isolatednet')
+    def test_isolatednet_udp_port_750_v6(self):
         """
         @summary: Testing UDP from other sender without security rules
                   over isolatednet on port 750
@@ -445,8 +347,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
             file_content=file_content, expected_data=expected_data,
             ip_version=6)
 
-    @tags('dev9')
-    def test_isolatednet_udp_port_749(self):
+    @tags('isolatednet')
+    def test_isolatednet_udp_port_749_v6(self):
         """
         @summary: Testing UDP from other sender without security rules
                   over isolatednet on port 749
@@ -462,8 +364,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
             file_content=file_content, expected_data=expected_data,
             ip_version=6)
 
-    @tags('dev10')
-    def test_isolatednet_udp_port_750_w_udp_egress(self):
+    @tags('isolatednet')
+    def test_isolatednet_udp_port_750_w_udp_egress_v6(self):
         """
         @summary: Testing UDP from sender with security egress rules on
                   port 750 that is part of the egress rule
@@ -478,8 +380,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
             file_content=file_content, expected_data=expected_data,
             ip_version=6)
 
-    @tags('dev10')
-    def test_isolatednet_udp_port_749_w_udp_egress(self):
+    @tags('isolatednet')
+    def test_isolatednet_udp_port_749_w_udp_egress_v6(self):
         """
         @summary: Testing UDP from sender with security egress rules on
                   port 749 that is NOT part of the egress rule
@@ -495,8 +397,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
             file_content=file_content, expected_data=expected_data,
             ip_version=6)
 
-    @tags('dev11')
-    def test_publicnet_udp_port_750(self):
+    @tags('publicnet')
+    def test_publicnet_udp_port_750_v6(self):
         """
         @summary: Testing UDP from other sender without security rules
                   over publicnet on port 750
@@ -512,8 +414,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
             file_content=file_content, expected_data=expected_data,
             ip_version=6)
 
-    @tags('dev11')
-    def test_publicnet_udp_port_749(self):
+    @tags('publicnet')
+    def test_publicnet_udp_port_749_v6(self):
         """
         @summary: Testing UDP from other sender without security rules
                   over publicnet on port 749
@@ -529,8 +431,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
             file_content=file_content, expected_data=expected_data,
             ip_version=6)
 
-    @tags('dev11')
-    def test_publicnet_udp_port_750_w_udp_egress(self):
+    @tags('publicnet')
+    def test_publicnet_udp_port_750_w_udp_egress_v6(self):
         """
         @summary: Testing UDP from sender with security egress rules on
                   port 750 that is part of the egress rule
@@ -545,8 +447,8 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
             file_content=file_content, expected_data=expected_data,
             ip_version=6)
 
-    @tags('dev11')
-    def test_publicnet_udp_port_749_w_udp_egress(self):
+    @tags('publicnet')
+    def test_publicnet_udp_port_749_w_udp_egress_v6(self):
         """
         @summary: Testing UDP from sender with security egress rules on
                   port 749 that is NOT part of the egress rule
@@ -561,30 +463,3 @@ wrOSmATnn9DKxMYtvBIKCbDhssgeTaGKySG8FNdRQeq510dNwM/7olSL10X83ZWX
             listener_ip=self.lp.pnet_fix_ipv6[0], port=UDP_PORT_749,
             file_content=file_content, expected_data=expected_data,
             ip_version=6)
-
-    @tags('dev5')
-    def test_sgigs(self):
-        print 'testin....'
-    
-    def test_tcp_w_ports(self):
-        # Create TCP port rule with port range min and max
-        # Update sender port with rule
-        # Check communication between sender-listener
-        # Check communication between other-listener
-        pass
-    
-    def test_tcp_w_remote_ip_prefix(self):
-        # Create TCP port rule with remopte_ip_prefix (listener IP prefix)
-        # Update sender port with rule
-        # Check communication between sender-listener (ports/ping)
-        # Check communication between other-listener
-        pass
-    
-    def test_icmp(self):
-        # Create ICMP rule
-        # Update icmp sender with rule
-        # Check communication between sender-listener (ping)
-        # Check communication between other-listener        
-        pass
-        
-        
