@@ -132,18 +132,17 @@ class NetworkingFixture(BaseTestFixture):
             cls.fixture_log.info(dmsg)
             delete_method(delete_list)
 
-    @classmethod
-    def networkingCleanUp(cls):
+    def networkingCleanUp(self):
         """
         @summary: Deletes ports, subnets and networks using the keep_resources
             and keep_resources_on_failure flags. Will be called after any
             tearDown or setUp failure if added at the class cleanup.
         """
 
-        cls.fixture_log.info('networkingCleanUp ....')
-        cls.portsCleanUp()
-        cls.subnetsCleanUp()
-        cls.networksCleanUp()
+        self.fixture_log.info('networkingCleanUp ....')
+        self.portsCleanUp()
+        self.subnetsCleanUp()
+        self.networksCleanUp()
 
     @classmethod
     def portsCleanUp(cls):
@@ -248,11 +247,12 @@ class NetworkingFixture(BaseTestFixture):
                 expected_subnet=expected_subnet, subnet=subnet,
                 check_exact_name=False)
         elif set_up:
-            msg = ('Unable to create test IPv{0} subnet {1} status code {2}, '
-                   'failures:{3}'.format(expected_subnet.ip_version,
-                                         expected_subnet.name,
-                                         resp.response.status_code,
-                                         resp.failures))
+            msg = ('Unable to create test IPv{ip_version} subnet {subnet_name}'
+                   'status code {status_code}, failures:{failures}'.format(
+                       ip_version=expected_subnet.ip_version,
+                       subnet_name=expected_subnet.name,
+                       status_code=resp.response.status_code,
+                       failures=resp.failures))
             self.assertClassSetupFailure(msg)
         return subnet
 
@@ -1299,44 +1299,24 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
         @type server_persona: ServerPersona instance
         """
         if server_persona.pnet:
-            if server_persona.pnet_fix_ipv4_count:
-                pnet_ipv4 = True
-            else:
-                pnet_ipv4 = False
-            if server_persona.pnet_fix_ipv6_count:
-                pnet_ipv6 = True
-            else:
-                pnet_ipv6 = False
+            pnet_ipv4 = server_persona.pnet_fix_ipv4_count
+            pnet_ipv6 = server_persona.pnet_fix_ipv6_count
             self.assertServerNetworkByName(
                 server=server_persona.server, network_name='public',
                 ipv4=pnet_ipv4, ipv6=pnet_ipv6)
 
         if server_persona.snet:
-            if server_persona.snet_fix_ipv4_count:
-                snet_ipv4 = True
-            else:
-                snet_ipv4 = False
-            if server_persona.snet_fix_ipv6_count:
-                snet_ipv6 = True
-            else:
-                snet_ipv6 = False
+            snet_ipv4 = server_persona.snet_fix_ipv4_count
+            snet_ipv6 = server_persona.snet_fix_ipv6_count
             self.assertServerNetworkByName(
                 server=server_persona.server, network_name='private',
                 ipv4=snet_ipv4, ipv6=snet_ipv6)
 
         if server_persona.inet:
-            if server_persona.inet_fix_ipv4_count:
-                inet_ipv4 = True
-                inet_ipv4_cidr = server_persona.subnetv4.cidr
-            else:
-                inet_ipv4 = False
-                inet_ipv4_cidr = None
-            if server_persona.snet_fix_ipv6_count:
-                inet_ipv6 = True
-                inet_ipv6_cidr = server_persona.subnetv6.cidr
-            else:
-                inet_ipv6 = False
-                inet_ipv6_cidr = None
+            inet_ipv4 = server_persona.inet_fix_ipv4_count
+            inet_ipv4_cidr = getattr(server_persona.subnetv4, 'cidr', None)
+            inet_ipv6 = server_persona.snet_fix_ipv6_count
+            inet_ipv6_cidr = getattr(server_persona.subnetv6, 'cidr', None)
             self.assertServerNetworkByName(
                 server=server_persona.server,
                 network_name=server_persona.network.name,
@@ -1598,22 +1578,12 @@ class NetworkingIPAddressesFixture(NetworkingComputeFixture):
             smsg = 'Missing {0} IP address subnet ID'.format(ip_address.id)
             self.assertTrue(ip_address.subnet_id, smsg)
 
-        self.assertEqual(
-            expected_ip_address.network_id, ip_address.network_id,
-            msg.format(expected_ip_address.network_id, ip_address.network_id,
-                       ip_address.id))
-        self.assertEqual(
-            expected_ip_address.tenant_id, ip_address.tenant_id,
-            msg.format(expected_ip_address.tenant_id, ip_address.tenant_id,
-                       ip_address.id))
-        self.assertEqual(
-            expected_ip_address.version, ip_address.version,
-            msg.format(expected_ip_address.version, ip_address.version,
-                       ip_address.id))
-        self.assertEqual(
-            expected_ip_address.type, ip_address.type,
-            msg.format(expected_ip_address.type, ip_address.type,
-                       ip_address.id))
+        validate_properties = ['network_id', 'tenant_id', 'version', 'type']
+        for prop in validate_properties:
+            exp_value = getattr(expected_ip_address, prop, None)
+            act_value = getattr(ip_address, prop, None)
+            self.assertEqual(exp_value, act_value, msg.format(
+                             exp_value, act_value, ip_address.id))
 
         if expected_ip_address.port_ids:
             expected_ip_address.port_ids.sort()
