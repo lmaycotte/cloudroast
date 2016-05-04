@@ -22,6 +22,8 @@ from cloudcafe.networking.networks.extensions.ip_addresses_api.constants \
             IPAddressesResponseCodes)
 from cloudroast.networking.networks.fixtures \
     import NetworkingIPAssociationsFixture
+from cloudcafe.networking.networks.extensions.ip_addresses_api.constants \
+    import IPAddressesServerZone
 
 
 class IPAddressesServersTest(NetworkingIPAssociationsFixture):
@@ -42,8 +44,9 @@ class IPAddressesServersTest(NetworkingIPAssociationsFixture):
                        cls.isolated_network_id]
 
         # Creating the test servers in the same cell
-        cls.servers_list = cls.net.behaviors.create_same_cell_n_servers(
-            n_servers=3, network_ids=network_ids, name='test_shared_ips')
+        cls.servers_list = cls.net.behaviors.create_servers_in_same_cell(
+            n_servers=3, network_ids=network_ids, name='test_shared_ips',
+            ip_zone_hint=IPAddressesServerZone.RAX_PUBLIC_IP_ZONE)
 
         # Unpacking the 3 servers from the servers list
         cls.server1, cls.server2, cls.server3 = cls.servers_list
@@ -129,12 +132,18 @@ class IPAddressesServersTest(NetworkingIPAssociationsFixture):
             network_id=network_id, version=version, port_ids=port_ids,
             device_ids=device_ids, raise_exception=False)
 
+        print resp
+        print resp.response
         # Fail the test if any failure is found, requires NCP-1577 fixed
         # self.assertFalse(resp.failures)
 
         # Using this check till NCP-1577 is fixed (HTTP 200 instead of 201)
-        msg = resp.failures[0]
+        if resp.failures:
+            msg = resp.failures[0]
+        else:
+            msg = 'Missing response entity'
         self.assertTrue(resp.response.entity, msg)
+        print resp.response.entity
         self.delete_ip_addresses.append(resp.response.entity.id)
 
         return resp.response.entity

@@ -217,6 +217,7 @@ class NetworkCreateTest(NetworkingAPIFixture):
         self.assertIsNone(resp.response.entity, 'Unexpected entity')
         self.assertTrue(resp.failures, 'Missing expected failures')
 
+    @unittest.skip('Per dev feedback: upstream dropped name checks')
     @tags('negative', 'creator')
     def test_network_create_w_invalid_name(self):
         """

@@ -42,6 +42,7 @@ from cloudcafe.networking.networks.extensions.security_groups_api.composites \
     import SecurityGroupsComposite
 from cloudcafe.networking.networks.extensions.security_groups_api.models.\
     response import SecurityGroup, SecurityGroupRule
+from cloudcafe.networking.networks.personas import ServerPersona
 
 
 class NetworkingFixture(BaseTestFixture):
@@ -797,7 +798,7 @@ class NetworkingSecurityGroupsFixture(NetworkingAPIFixture):
             ethertype=ethertype, protocol='icmp')
         ingress_ping_rule = ingress_ping_rule_req.response.entity
         cls.delete_secgroups_rules.append(ingress_ping_rule.id)
-        
+
         # ICMP requires an egress rule too for the Ping reply to be sent
         egress_ping_rule_req = cls.sec.behaviors.create_security_group_rule(
             security_group_id=sec_group_id, direction='egress',
@@ -810,7 +811,7 @@ class NetworkingSecurityGroupsFixture(NetworkingAPIFixture):
             ethertype=ethertype, protocol='tcp', port_range_min=22,
             port_range_max=22)
         ingress_ssh_rule = ingress_ssh_rule_req.response.entity
-        cls.delete_secgroups_rules.append(ingress_ssh_rule.id) 
+        cls.delete_secgroups_rules.append(ingress_ssh_rule.id)
 
     def create_test_secgroup(self, expected_secgroup=None, delete=True):
         """
@@ -991,6 +992,9 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
         # Other reusable values
         cls.flavor_ref = cls.flavors.config.primary_flavor
         cls.image_ref = cls.images.config.primary_image
+        cls.ssh_username = (cls.images.config.primary_image_default_user or
+                            'root')
+        cls.auth_strategy = cls.servers.config.instance_auth_strategy or 'key'
 
         cls.delete_servers = []
         cls.failed_servers = []
@@ -1026,8 +1030,9 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                     cls.keypairs.client.delete_keypair(key_name)
 
     @classmethod
-    def create_test_server(cls, name=None, key_name=None, scheduler_hints=None,
-                           network_ids=None, port_ids=None, active_server=True):
+    def create_test_server(cls, name=None, key_name=None,
+                           scheduler_hints=None, network_ids=None,
+                           port_ids=None, active_server=True):
         resp = cls.net.behaviors.create_networking_server(
             name=name, key_name=key_name, scheduler_hints=scheduler_hints,
             network_ids=network_ids, port_ids=port_ids,
@@ -1038,30 +1043,191 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
 
     @classmethod
     def create_keypair(cls, name):
-        
+
         # Using rand_name to avoid HTTP 409 Conflict due to duplicate names
         name = rand_name(name)
+        cls.fixture_log.info('Creating test server keypair')
         resp = cls.keypairs.client.create_keypair(name)
         msg = ('Unable to create server keypair: received HTTP {0} instead of '
                'the expected HTTP {1} response').format(
                    resp.status_code, ComputeResponseCodes.CREATE_KEYPAIR)
         assert resp.status_code == ComputeResponseCodes.CREATE_KEYPAIR, msg
+        cls.delete_keypairs.append(resp.entity.name)
         return resp.entity
 
-    def verify_remote_client_auth(self, server, remote_client,
-                                  sec_group=None):
-        msg = ('Remote client unable to authenticate for server {0} {1} '
-               'with security group: {2}').format(server.name, server.id,
-                                                  sec_group)
-        self.assertTrue(remote_client.can_authenticate(), msg)
+    @classmethod
+    def create_server_network(cls, name, ipv4=False, ipv6=False):
+        """
+        @summary: Create an isolated network
+        @param name: network name
+        @type name: str
+        @param ipv4: flag to create network with IPv4 subnet
+        @type ipv4: bool
+        @param ipv6: flag to create network with IPv6 subnet
+        @type ipv6: bool
+        """
+
+        net_msg = 'Creating {0} isolated network'.format(name)
+        cls.fixture_log.info(net_msg)
+        net_req = cls.networks.behaviors.create_network(name=name)
+        network = net_req.response.entity
+        cls.delete_networks.append(network.id)
+
+        if ipv4:
+            cls.fixture_log.info('Creating IPv4 subnet')
+            cls.subnets.behaviors.create_subnet(network_id=network.id,
+                                                ip_version=4)
+        if ipv6:
+            cls.fixture_log.info('Creating IPv6 subnet')
+            cls.subnets.behaviors.create_subnet(network_id=network.id,
+                                                ip_version=6)
+
+        return network
+
+    @classmethod
+    def create_multiple_servers(cls, server_names, keypair_name=None,
+                                networks=None, pnet=True, snet=True):
+        """
+        @summary: Create multiple test servers
+        @param server_names: names of servers to create
+        @type server_names: list(str)
+        @param keypair_name: (optional) keypair to create servers with
+        @type keypair_name: str
+        @param networks: (optional) isolated network ids to create servers with
+        @type networks: list(str)
+        @param pnet: flag to create server with public network
+        @type pnet: bool
+        @param snet: flag to create server with service (private) network
+        @type snet: bool
+        @return: server entity objects
+        @rtype: dict(server name: server entity object)
+        """
+
+        cls.fixture_log.debug('Defining the network IDs to be used')
+        network_ids = []
+
+        if pnet:
+            network_ids.append(cls.public_network_id)
+        if snet:
+            network_ids.append(cls.service_network_id)
+        if networks:
+            network_ids.extend(networks)
+
+        # Response dict where the key will be the server name and the value the
+        # server entity object
+        servers = dict()
+        server_ids = []
+        for name in server_names:
+            server = cls.create_test_server(name=name, key_name=keypair_name,
+                                            network_ids=network_ids,
+                                            active_server=False)
+            server_ids.append(server.id)
+            servers[name] = server
+
+        # Waiting for the servers to be active
+        cls.net.behaviors.wait_for_servers_to_be_active(
+            server_id_list=server_ids)
+
+        return servers
+
+    @classmethod
+    def create_multiple_personas(cls, persona_servers, persona_kwargs=None):
+        """
+        @summary: Create multiple server personas
+        @param persona_servers: servers to create personas from
+        @type persona_servers: dict(persona_label: server)
+        @param persona_kwargs: (optional) server persona attributes, excluding
+                               the server one that is at the persona_servers
+        @type persona_kwargs: dict
+        @return: servers personas
+        @rtype: dict(persona_label: persona)
+        """
+
+        # In case serer personas are created with default values
+        if not persona_kwargs:
+            persona_kwargs = dict()
+
+        # Response dict where the key will be the persona label and the value
+        # the persona object
+        personas = dict()
+        for persona_label, persona_server in persona_servers.items():
+            persona_kwargs.update(server=persona_server)
+            server_persona = ServerPersona(**persona_kwargs)
+            personas[persona_label] = server_persona
+
+        return personas
+
+    @classmethod
+    def update_server_ports_w_sec_groups(cls, port_ids, security_groups,
+                                         raise_exception=True):
+        """
+        @summary: Updates server ports with security groups
+        @param port_ids: ports to update
+        @type port_ids: list(str)
+        @param security_groups: security groups to add to the ports
+        @type security_groups: list(str)
+        @param raise_exception: raise exception port was not updated
+        @type raise_exception: bool
+        """
+
+        for port_id in port_ids:
+            cls.ports.behaviors.update_port(
+                port_id=port_id, security_groups=security_groups,
+                raise_exception=raise_exception)
+
+    def verify_remote_clients_auth(self, servers, remote_clients,
+                                   sec_groups=None):
+        """
+        @summary: verifying remote clients authentication
+        @param servers: server entities
+        @type servers: list of server entities
+        @param remote_clients: remote instance clients from servers
+        @type remote_clients: list of remote instance clients
+        @param sec_groups: security group applied to the server
+        @type sec_groups: list of security groups entities
+        """
+        error_msg = ('Remote client unable to authenticate for server {0} '
+                     'with security group: {1}')
+        errors = []
+
+        # In case there are no security groups associated with the servers
+        if not sec_groups:
+            sec_groups = [''] * len(remote_clients)
+
+        for server, remote_client, sec_group in (
+                zip(servers, remote_clients, sec_groups)):
+
+            if not remote_client.can_authenticate():
+                msg = error_msg.format(server.id, sec_group)
+                errors.append(msg)
+
+        return errors
 
     def verify_ping(self, remote_client, ip_address, ip_version=4,
                     count=3, accepted_packet_loss=0):
+        """
+        @summary: Verify ICMP connectivity between two servers
+        @param remote_client: remote client server to ping from
+        @type remote_client: cloudcafe.compute.common.clients.
+                             remote_instance.linux.linux_client.LinuxClient
+        @param ip_address: IP address to ping
+        @type ip_address: str
+        @param ip_version: version of IP address
+        @type ip_version: int
+        @param count: number of pings, for ex. ping -c count (by default 3)
+        @type count: int
+        @param accepted_packet_loss: fail if packet loss greater (by default 0)
+        @type accepted_packet_loss: int
+        """
+
+        count = self.config.ping_count or count
+        accepted_packet_loss = self.config.accepted_packet_loss or (
+            accepted_packet_loss)
         ping_packet_loss_regex = '(\d{1,3})\.?\d*\%.*loss'
 
         if ip_version == 6:
             ping_cmd = 'ping6 -c {0} {1}'.format(count, ip_address)
-        else:    
+        else:
             ping_cmd = 'ping -c {0} {1}'.format(count, ip_address)
         resp = remote_client.ssh_client.execute_command(ping_cmd)
         loss_pct_search = re.search(ping_packet_loss_regex, resp.stdout)
@@ -1080,80 +1246,87 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
                        remote_client.ip_address, ip_address,
                        loss_pct_num, accepted_packet_loss)
             self.fail(msg)
- 
-    def verify_upd_connectivity(self, listener_client, sender_client,
+
+    def verify_udp_connectivity(self, listener_client, sender_client,
                                 listener_ip, port, file_content,
                                 expected_data, ip_version=4):
         """
-        @summary: Verify TCP port connectivity between two servers
-        @param listener_client: remote client server that receives TCP packages
+        @summary: Verify UDP port connectivity between two servers
+        @param listener_client: remote client server that receives UDP packages
         @type listener_client: cloudcafe.compute.common.clients.
                                remote_instance.linux.linux_client.LinuxClient
-        @param sender_client: remote client server that sends TCP packages
+        @param sender_client: remote client server that sends UDP packages
         @type sender_client: cloudcafe.compute.common.clients.
                              remote_instance.linux.linux_client.LinuxClient
         @param listener_ip: public, service or isolated network IP
         @type listener_ip: str
         @param port: open port on listener
         @type port: str
-        @param file_content: file content, for ex. 'Security Groups UDP testing'
+        @param file_content: file content, for ex. Security Groups UDP testing
         @type file_content: str
         @param expected_data: transmited file content, for ex.
                               'XXXXXXXSecurity Groups UDP testing'
         @type expected_data: str
         """
         file_name = 'udp_transfer'
-        dir_path = '/root'
+
+        # Can be set as the default_file_path property in the config
+        # file servers section, or to be set to /root by default
+        dir_path = self.servers.config.default_file_path or '/root'
         file_path = '/{0}/{1}'.format(dir_path, file_name)
-        
+
         # Deleting the file if it exists
-        sender_client.delete_file(file_path=file_path)
-        listener_client.delete_file(file_path=file_path)
-        
+        if sender_client.is_file_present(file_path=file_path):
+            sender_client.delete_file(file_path=file_path)
+        if listener_client.is_file_present(file_path=file_path):
+            listener_client.delete_file(file_path=file_path)
+
         # Listener and sender commands
         if ip_version == 6:
-            lnc_cmd = 'nc -6 -u -l {0} > {1}'.format(port, file_name)   
+            lnc_cmd = 'nc -6 -u -l {0} > {1}'.format(port, file_name)
             snc_cmd = 'nc -6 -u -n -v {0} {1} -w 3 < {2}'.format(listener_ip,
                                                                  port,
-                                                                 file_name)            
+                                                                 file_name)
         else:
-            lnc_cmd = 'nc -u -l {0} > {1}'.format(port, file_name)   
+            lnc_cmd = 'nc -u -l {0} > {1}'.format(port, file_name)
             snc_cmd = 'nc -u -n -v {0} {1} -w 3 < {2}'.format(listener_ip,
                                                               port,
-                                                              file_name)     
-        
+                                                              file_name)
+
         # Creating the file to transfer for UDP testing
         sender_client.create_file(file_name=file_name,
-                                  file_content=file_content, file_path=dir_path)
+                                  file_content=file_content,
+                                  file_path=dir_path)
 
         file_created = sender_client.is_file_present(file_path=file_path)
         fcmsg = 'Unable to create remote file {0} at {1} sender server'.format(
             file_path, sender_client.ip_address)
         self.assertTrue(file_created, fcmsg)
-        
+
         # Opening listener port to receive file contents
-        set_listener = listener_client.ssh_client.execute_shell_command(lnc_cmd)
+        set_listener = listener_client.ssh_client.execute_shell_command(
+            lnc_cmd)
         listener_ok = lnc_cmd in set_listener.stdout
         lkmsg = ('Unexpected shell command output:\n{0}\nRunning command:'
-                 ' {1}\nAt listener server: {2}\n').format(set_listener, lnc_cmd,
-                     listener_client.ip_address)
+                 ' {1}\nAt listener server: {2}\n').format(
+                     set_listener, lnc_cmd, listener_client.ip_address)
         self.assertTrue(listener_ok, lkmsg)
-        
+
         # Transmitting file
         t = sender_client.ssh_client.execute_command(snc_cmd)
         t_ok = (listener_ip in t.stderr and port in t.stderr and
                 'succeeded!' in t.stderr)
         tkmsg = ('Unexpected shell command output:\n{0}\nRunning command:'
-               ' {1}\nAt sender server: {2}\n').format(t, snc_cmd,
-                                                       sender_client.ip_address)
+                 ' {1}\nAt sender server: {2}\n').format(
+                     t, snc_cmd, sender_client.ip_address)
         self.assertTrue(t_ok, tkmsg)
-        
+
         # Checking file was created by running the listener command
         fp = listener_client.is_file_present(file_path=file_path)
         fpmsg = 'File {0} missing at listener server {1}'.format(
             file_path, listener_client.ip_address)
         self.assertTrue(fp, fpmsg)
-        
+
         # Getting the file contents in the listener
         fd = listener_client.get_file_details(file_path=file_path)
         fdmsg = ('Unexpected data: {0} \ninstead of the expected: {1} \n'
@@ -1182,13 +1355,13 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
         @param port_range: ports to check on listener from sender
         @type port_range: str
         @param expected_data: stdout from port check by sender, for ex.
-                              ['442 (tcp) timed out: Operation now in progress',
-                               '443 port [tcp/*] succeeded!',
-                               '444 port [tcp/*] succeeded!',
-                               '445 (tcp) failed: Connection refused']
-        @type expected_data: list          
+                            ['442 (tcp) timed out: Operation now in progress',
+                             '443 port [tcp/*] succeeded!',
+                             '444 port [tcp/*] succeeded!',
+                             '445 (tcp) failed: Connection refused']
+        @type expected_data: list
         """
-        
+
         if ip_version == 6:
 
             # Security group rule has default ports 992-995
@@ -1196,19 +1369,20 @@ class NetworkingComputeFixture(NetworkingSecurityGroupsFixture):
             snc_cmd = 'nc -z -n -v -6 {0} {1} -w 2'.format(
                 listener_ip, port_range)
         else:
-            
+
             # Security group rule has default ports 443-445
             lnc_cmd = 'nc -l {0} & nc -l {1} &'.format(port1, port2)
-            snc_cmd = 'nc -z -n -v {0} {1} -w 2'.format(listener_ip, port_range)
-        
+            snc_cmd = 'nc -z -n -v {0} {1} -w 2'.format(listener_ip,
+                                                        port_range)
+
         set_listener = listener_client.ssh_client.execute_shell_command(
             lnc_cmd)
         listener_ok = lnc_cmd in set_listener.stdout
         msg = ('Unexpected shell command output:\n{0}\nRunning command:'
                ' {1}\nAt server: {2}\n').format(set_listener, lnc_cmd,
-                   listener_client.ip_address)
+                                                listener_client.ip_address)
         self.assertTrue(listener_ok, msg)
-        
+
         check_ports = sender_client.ssh_client.execute_command(snc_cmd)
 
         for data in expected_data:

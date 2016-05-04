@@ -119,55 +119,55 @@ class SecurityGroupsEgressIPv4Test(NetworkingComputeFixture):
         #############for development w static servers#########
         #"""
         network = cls.networks.behaviors.get_network(
-            '0db5c1e1-5813-4c2b-8d9b-8250d345ab83').response.entity
+            '46e1bbfe-7040-43fa-b8d5-838af505af10').response.entity
         subnet4 = cls.subnets.behaviors.get_subnet(
-            '41c611c6-658d-464c-ba03-f3ecb9c1da05').response.entity
+            '209b9f37-e248-4aaa-ab20-fdcd4078e655').response.entity
         cls.keypair = cls.keypairs.client.get_keypair(
-            'sg_test_key9814940a').entity
+            'sg_test_keyc210945a').entity
         cls.keypair.private_key = (u"""-----BEGIN RSA PRIVATE KEY-----
-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
+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
 -----END RSA PRIVATE KEY-----""")
         
-        server_ids = [u'ffbace5b-bb48-4356-8c71-5a64406fb0bf',
-                      u'e879f916-3b42-40a1-8717-7550ff3321e9',
-                      u'7c070012-a733-48c9-a953-0d57175d9049',
-                      u'89ba8268-4289-4dfa-b095-7f8a5a144b60']
+        server_ids = [u'6fa16841-ecf4-45b7-b7c1-3597f419f75b',
+                      u'4c029222-901d-42ce-99fc-62e80be8cc4a',
+                      u'76ccfe1e-c6cc-4c7c-ae05-51be9845908b',
+                      u'5e27d1db-7d72-4eaa-ab40-ecacdbea9b72']
         cls.listener = cls.net.behaviors.get_networking_server(
             server_id=server_ids[0])
-        cls.listener.admin_pass = '7syRSKH4V3HC'
+        cls.listener.admin_pass = 'fECzqh4KUaMm'
         cls.sender = cls.net.behaviors.get_networking_server(
             server_id=server_ids[1])
-        cls.sender.admin_pass = 'ZqVLxmNur7QP'
+        cls.sender.admin_pass = 'oC5y6L7sCbVw'
         cls.icmp_sender = cls.net.behaviors.get_networking_server(
             server_id=server_ids[2])
-        cls.icmp_sender.admin_pass = 'JDZRd6ZNLjA7'
+        cls.icmp_sender.admin_pass = 'iVbrLS6GGEKu'
         cls.other_sender = cls.net.behaviors.get_networking_server(
             server_id=server_ids[3])
-        cls.other_sender.admin_pass = 'hnAT2j6zzBcS'
+        cls.other_sender.admin_pass = 'rEbfD3fajBFC'
         #"""
         ########################################################
         """
@@ -224,17 +224,17 @@ Miy81HPYar2aZRKR9+Vf0EFFYsI5vi9LVpAswXyH/cJkBw98yFauWpzogQ==
         """
         #############for development w static SGs#########
         #"""
-        cls.security_group_ids = [u'f3cadad9-143b-4a08-b828-3e48fae6f875',
-                                  u'd93d4c06-c5bb-4b0a-8c16-6fef451a94d4']
+        cls.security_group_ids = [u'66e9aa52-027d-4e7b-9fb3-e6d24fce7a3c',
+                                  u'7b6d821b-ac73-49cd-80ed-1e367c252099']
         #"""
         cls.sec_group_tcp_ipv4 = cls.sec.behaviors.get_security_group(
             cls.security_group_ids[0]).response.entity
         cls.sec_group_icmp_ipv4 = cls.sec.behaviors.get_security_group(
             cls.security_group_ids[1]).response.entity
 
-        #print cls.security_group_ids
-        #print cls.sec_group_tcp_ipv4
-        #print cls.sec_group_icmp_ipv4
+        print cls.security_group_ids
+        print cls.sec_group_tcp_ipv4
+        print cls.sec_group_icmp_ipv4
 
         ####################################################
 
@@ -288,9 +288,8 @@ Miy81HPYar2aZRKR9+Vf0EFFYsI5vi9LVpAswXyH/cJkBw98yFauWpzogQ==
         print cls.spi.inet_ports 
         """
 
-        print 'data plane delay {0}'.format(cls.sec.config.data_plane_delay)
-        #time.sleep(time.sleep(self.security_groups.config.data_plane_delay))
-   
+        #print 'data plane delay {0}'.format(cls.sec.config.data_plane_delay)
+        #time.sleep(cls.sec.config.data_plane_delay)
 
     def setUp(self):        
         """ Creating the remote clients """

@@ -1110,6 +1110,7 @@ class PortCreateTest(NetworkingAPIFixture):
             delete_list=self.delete_ports,
             error_type=NeutronErrorTypes.POLICY_NOT_AUTHORIZED)
 
+    @unittest.skip('Per dev feedback: upstream dropped name checks')
     @tags('negative', 'creator', 'quark')
     def test_ipv4_port_create_w_invalid_name(self):
         """
@@ -1133,6 +1134,7 @@ class PortCreateTest(NetworkingAPIFixture):
             delete_list=self.delete_ports,
             not_in_error_msg=expected_port.name)
 
+    @unittest.skip('Per dev feedback: upstream dropped name checks')
     @tags('negative', 'creator', 'quark')
     def test_ipv6_port_create_w_invalid_name(self):
         """

@@ -1707,6 +1707,7 @@ class SubnetCreateTest(NetworkingAPIFixture):
             resp=resp, status_code=NeutronResponseCodes.BAD_REQUEST, msg=msg,
             delete_list=self.delete_subnets)
 
+    @unittest.skip('Per dev feedback: upstream dropped name checks')
     @tags('negative', 'creator')
     def test_ipv4_subnet_create_w_invalid_name(self):
         """
@@ -1732,6 +1733,7 @@ class SubnetCreateTest(NetworkingAPIFixture):
             delete_list=self.delete_subnets,
             not_in_error_msg=expected_subnet.name)
 
+    @unittest.skip('Per dev feedback: upstream dropped name checks')
     @tags('negative', 'creator')
     def test_ipv6_subnet_create_w_invalid_name(self):
         """

@@ -126,6 +126,7 @@ class SubnetUpdateTest(NetworkingAPIFixture):
         # Check the Subnet response
         self.assertSubnetResponse(expected_subnet, subnet)
 
+    @unittest.skip('Per dev feedback: upstream dropped name checks')
     @tags('negative', 'creator')
     def test_ipv4_subnet_update_w_invalid_name(self):
         """
@@ -148,6 +149,7 @@ class SubnetUpdateTest(NetworkingAPIFixture):
             delete_list=self.delete_subnets,
             not_in_error_msg=expected_subnet.name)
 
+    @unittest.skip('Per dev feedback: upstream dropped name checks')
     @tags('negative', 'creator')
     def test_ipv6_subnet_update_w_invalid_name(self):
         """

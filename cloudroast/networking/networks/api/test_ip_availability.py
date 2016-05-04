@@ -82,7 +82,7 @@ class IPAvailabilityTest(NetworkingAPIFixture):
                        reserved_ips=reserved_ips, port=port)
                 self.fail(msg)
         
-        # Testing the
+        # Testing without IPs available on the network
         resp = self.ports.behaviors.create_port(network_id=networkv4.id,
                                                 raise_exception=False)
         
