@@ -252,6 +252,7 @@ class SubnetUpdateTest(NetworkingAPIFixture):
 
         # Adding a dns nameserver till quota is reached
         for _ in range(quota):
+            # TODO: add check that they are unique!
             dns_nameserver = self.subnets.behaviors.get_random_ip(dns_cidr)
             self.expected_ipv4_subnet.dns_nameservers.append(dns_nameserver)
 

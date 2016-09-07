@@ -293,7 +293,8 @@ class PortCreateTest(NetworkingAPIFixture):
         # Check the Port response (Port expected on IPv4 Subnet
         self.assertPortResponse(expected_port, port, check_fixed_ips=True)
 
-    @unittest.skip('For Neutron .224')
+    # The skip can be removed now
+    # @unittest.skip('For Neutron .224')
     @tags('smoke', 'creator')
     def test_ipv4_port_create_on_net_w_subnet_ids_from_another_network(self):
         """
@@ -335,7 +336,8 @@ class PortCreateTest(NetworkingAPIFixture):
             delete_list=self.delete_ports,
             error_type=NeutronErrorTypes.INVALID_INPUT)
 
-    @unittest.skip('For Neutron .224')
+    # The skip can be removed now
+    #  @unittest.skip('For Neutron .224')
     @tags('smoke', 'creator')
     def test_ipv6_port_create_on_net_w_subnet_ids_from_another_network(self):
         """

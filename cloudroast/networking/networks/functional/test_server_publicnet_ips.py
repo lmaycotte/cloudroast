@@ -17,6 +17,7 @@ limitations under the License.
 from cafe.drivers.unittest.decorators import tags
 
 from cloudcafe.networking.networks.personas import ServerPersona
+from cloudcafe.compute.servers_api.models.servers import Servers
 from cloudcafe.networking.networks.extensions.ip_addresses_api.constants \
     import (IPAddressesErrorTypes, IPAddressesResource,
             IPAddressesResponseCodes)
@@ -40,18 +41,31 @@ class IPAddressesServersTest(NetworkingIPAssociationsFixture):
 
         # Defining the test server networks
         cls.isolated_network_id = cls.network.id
+        
+        network_ids = [cls.isolated_network_id]
+        """       
         network_ids = [cls.public_network_id, cls.service_network_id,
                        cls.isolated_network_id]
 
         # Creating the test servers in the same cell
+        
+        # TODO: replace this for cls.net.behaviors.create_cultiple_servers
         cls.servers_list = cls.net.behaviors.create_servers_in_same_cell(
             n_servers=3, network_ids=network_ids, name='test_shared_ips',
             ip_zone_hint=IPAddressesServerZone.RAX_PUBLIC_IP_ZONE)
+        """
 
+        server_names = ['test_shared_ips']*3
+        servers = cls.net.behaviors.create_multiple_servers(
+            names=server_names, networks=network_ids, use_ip_zone_hint=True,
+            ip_zone_hint=IPAddressesServerZone.RAX_PUBLIC_IP_ZONE)
+
+        cls.servers_list = servers.values()
+        
         # Unpacking the 3 servers from the servers list
         cls.server1, cls.server2, cls.server3 = cls.servers_list
         cls.device_ids = [cls.server1.id, cls.server2.id, cls.server3.id]
-        
+
         # Adding server ids for deletion by the test clean up
         for server_id in cls.device_ids:
             cls.delete_servers.append(server_id)
