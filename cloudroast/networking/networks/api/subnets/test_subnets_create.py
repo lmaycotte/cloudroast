@@ -293,7 +293,7 @@ class SubnetCreateTest(NetworkingAPIFixture):
         subnet = resp.response.entity
 
         # Enable dhcp is not a settable attribute
-        expected_subnet.enable_dhcp = None
+        expected_subnet.enable_dhcp = False
 
         # Check the Subnet response
         self.assertSubnetResponse(expected_subnet, subnet,
@@ -330,7 +330,7 @@ class SubnetCreateTest(NetworkingAPIFixture):
                 subnet.allocation_pools))
 
         # Enable dhcp is not a settable attribute
-        expected_subnet.enable_dhcp = None
+        expected_subnet.enable_dhcp = False
 
         # Check the Subnet response
         self.assertSubnetResponse(expected_subnet, subnet,

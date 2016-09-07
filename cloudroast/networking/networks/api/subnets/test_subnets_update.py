@@ -460,7 +460,7 @@ class SubnetUpdateTest(NetworkingAPIFixture):
         subnet = resp.response.entity
 
         # Enable dhcp is not a settable attribute
-        self.expected_ipv4_subnet.enable_dhcp = None
+        self.expected_ipv4_subnet.enable_dhcp = False
 
         # Check the Subnet response
         self.assertSubnetResponse(self.expected_ipv4_subnet, subnet,
@@ -485,7 +485,7 @@ class SubnetUpdateTest(NetworkingAPIFixture):
         subnet = resp.response.entity
 
         # Enable dhcp is not a settable attribute
-        self.expected_ipv6_subnet.enable_dhcp = None
+        self.expected_ipv6_subnet.enable_dhcp = False
 
         # Need to format IPv6 allocation pools response for assertion
         subnet.allocation_pools = (
