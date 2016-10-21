@@ -34,23 +34,31 @@ class NovaCLI_IntegrationFixture(BaseVolumesTestFixture):
                 cls.volumes.client)
 
     @staticmethod
-    def random_string(prefix='NovaClientTestServer_', suffix=None, size=8):
-        return random_string(prefix=prefix, suffix=suffix, size=size)
+    def random_server_name():
+        return random_string(prefix="NovaClientTestServer_", size=10)
 
     @classmethod
     def new_volume(cls, size=None, volume_type=None, add_cleanup=True):
-        min_size = cls.volumes.behaviors.get_configured_volume_type_property(
-            "min_size",
-            id_=volume_type or cls.volumes.config.default_volume_type,
-            name=volume_type or cls.volumes.config.default_volume_type)
+        size = (
+            size or cls.volumes.behaviors.get_configured_volume_type_property(
+                "min_size",
+                id_=volume_type or cls.volumes.config.default_volume_type,
+                name=volume_type or cls.volumes.config.default_volume_type))
         volume_type = volume_type or cls.volumes.config.default_volume_type
-        resp = cls.nova.client.volume_create(
-            size or min_size, volume_type=volume_type)
+        resp = cls.nova.client.volume_create(size, volume_type=volume_type)
         assert resp.return_code == 0 and resp.entity is not None, (
             "Unable to create volume of size {0} and type {1}".format(
                 size, volume_type))
         if add_cleanup:
             cls.addClassCleanup(cls.nova.client.volume_delete, resp.entity.id_)
+
+        timeout = cls.volumes.behaviors.calculate_volume_create_timeout(
+            resp.entity.size)
+
+        # Raise an exception if the volume doesn't reach the 'available'
+        # status correctly (via the API, not the python-cinderclient)
+        cls.volumes.behaviors.verify_volume_create_status_progresion(
+            resp.entity.id_, timeout)
 
         return resp.entity
 
@@ -76,7 +84,7 @@ class NovaCLI_IntegrationFixture(BaseVolumesTestFixture):
         retries = 0
         last_exception = None
         while retries < retry_count:
-            name = cls.random_string()
+            name = cls.random_server_name()
             print "Attempt {0} to create a server: {1}".format(
                 retries + 1, name)
             try:

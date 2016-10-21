@@ -1,5 +1,5 @@
 """
-Copyright 2013 Rackspace
+Copyright 2015 Rackspace
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,8 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from cloudroast.objectstorage.fixtures import ObjectStorageFixture
 from cloudcafe.common.tools import randomstring as randstring
+from cloudcafe.objectstorage.objectstorage_api.common.constants import \
+    Constants
+from cloudroast.objectstorage.fixtures import ObjectStorageFixture
 
 CONTENT_TYPE_TEXT = "text/plain; charset=UTF-8"
 CONTAINER_NAME = "object_versioning_test"
@@ -28,11 +30,18 @@ class ObjectVersioningTest(ObjectStorageFixture):
 
         cls.container_name = CONTAINER_NAME
         cls.object_name = "{0}_{1}".format(
-            cls.behaviors.VALID_OBJECT_NAME,
+            Constants.VALID_OBJECT_NAME,
             randstring.get_random_string())
 
     def setUp(self):
         super(ObjectVersioningTest, self).setUp()
+        """
+        Create a container for "current" object storage
+        """
+        self.current_version_container_name = (
+            self.create_temp_container(
+                "current_container_{0}".format(self.container_name)))
+
         """
         Create a container for "non-current" object storage
         """
@@ -40,16 +49,10 @@ class ObjectVersioningTest(ObjectStorageFixture):
             self.create_temp_container(
                 "non_current_container_{0}".format(self.container_name)))
 
-        """
-        Create a container for "current" object storage
-        """
-        current_version_container_headers = (
+        headers = (
             {"X-Versions-Location": self.non_current_version_container_name})
-
-        self.current_version_container_name = (
-            self.create_temp_container(
-                "current_container_{0}".format(self.container_name),
-                headers=current_version_container_headers))
+        self.client.set_container_metadata(
+            self.current_version_container_name, headers=headers)
 
         self.num_objects = 4
         self.num_versioned_objects = self.num_objects - 1
@@ -62,7 +65,7 @@ class ObjectVersioningTest(ObjectStorageFixture):
         """
         create objects in the current version container
         """
-        for i in range(0, (self.num_objects)):
+        for i in range(0, self.num_objects):
             data = eval("self.object_data_version{0}".format(i))
 
             headers = {"X-Object-Meta-Version": data,
@@ -111,7 +114,7 @@ class ObjectVersioningTest(ObjectStorageFixture):
             expected,
             received,
             msg="retrieving current version of object expected content: {0}"
-                " recieved content: {1}".format(expected, received))
+                " received content: {1}".format(expected, received))
 
         """
         check the number of versioned objects
@@ -166,7 +169,7 @@ class ObjectVersioningTest(ObjectStorageFixture):
                 expected,
                 received,
                 msg="versioned object prefix expected: {0}"
-                    " recieved: {1}".format(expected, received))
+                    " received: {1}".format(expected, received))
 
             """
             check the content of the versioned object
@@ -182,7 +185,7 @@ class ObjectVersioningTest(ObjectStorageFixture):
                 expected,
                 received,
                 msg="retrieving current version of object expected"
-                    " content: {0} recieved content: {1}".format(
+                    " content: {0} received content: {1}".format(
                         expected,
                         received))
 
@@ -196,7 +199,7 @@ class ObjectVersioningTest(ObjectStorageFixture):
                 expected,
                 received,
                 msg="versioned object metadata expected"
-                    " X-Object-Meta-Version: {0} recieved"
+                    " X-Object-Meta-Version: {0} received"
                     " X-Object-Meta-Version: {1}".format(
                         expected,
                         received))
@@ -259,7 +262,7 @@ class ObjectVersioningTest(ObjectStorageFixture):
                 expected,
                 received,
                 msg="retrieving current version of object expected"
-                    " content: {0} recieved content: {1}".format(
+                    " content: {0} received content: {1}".format(
                         expected,
                         received))
 
@@ -274,7 +277,7 @@ class ObjectVersioningTest(ObjectStorageFixture):
                 expected,
                 received,
                 msg="current version object metadata expected"
-                    " content: {0} recieved content: {1}".format(
+                    " content: {0} received content: {1}".format(
                         expected,
                         received))
 

@@ -1,5 +1,5 @@
 """
-Copyright 2013 Rackspace
+Copyright 2015 Rackspace
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,7 +15,10 @@ limitations under the License.
 """
 from calendar import timegm
 from time import gmtime, sleep, time
+
 from cafe.engine.http.client import HTTPClient
+from cloudcafe.objectstorage.objectstorage_api.common.constants import \
+    Constants
 from cloudroast.objectstorage.fixtures import ObjectStorageFixture
 
 CONTAINER_DESCRIPTOR = 'form_post_test'
@@ -30,12 +33,20 @@ class FormPostTest(ObjectStorageFixture):
         super(FormPostTest, cls).setUpClass()
         cls.key_cache_time = (
             cls.objectstorage_api_config.tempurl_key_cache_time)
-        cls.tempurl_key = cls.behaviors.VALID_TEMPURL_KEY
-        cls.object_name = cls.behaviors.VALID_OBJECT_NAME
-        cls.object_data = cls.behaviors.VALID_OBJECT_DATA
-        cls.content_length = str(len(cls.behaviors.VALID_OBJECT_DATA))
+        cls.object_name = Constants.VALID_OBJECT_NAME
+        cls.object_data = Constants.VALID_OBJECT_DATA
+        cls.content_length = str(len(Constants.VALID_OBJECT_DATA))
         cls.http_client = HTTPClient()
         cls.redirect_url = "http://example.com/form_post_test"
+
+        keys_set = cls.behaviors.check_account_tempurl_keys()
+        if keys_set:
+            metadata_response = cls.client.get_account_metadata()
+            cls.tempurl_key = \
+                metadata_response.headers.get("X-Account-Meta-Temp-Url-Key")
+        else:
+            raise Exception("An error occurred while checking for Account "
+                            "TempURL keys")
 
     @ObjectStorageFixture.required_features('formpost')
     def test_object_formpost_redirect(self):
@@ -54,7 +65,7 @@ class FormPostTest(ObjectStorageFixture):
 
         files = [{'name': 'foo1'}]
 
-        formpost_info = self.client.create_formpost(
+        formpost_info = self.behaviors.create_formpost(
             container_name,
             files,
             redirect=self.redirect_url,
@@ -107,7 +118,7 @@ class FormPostTest(ObjectStorageFixture):
 
         files = [{'name': 'foo1'}]
 
-        formpost_info = self.client.create_formpost(
+        formpost_info = self.behaviors.create_formpost(
             container_name,
             files,
             redirect="",
@@ -156,7 +167,7 @@ class FormPostTest(ObjectStorageFixture):
 
         delete_at = int(timegm(gmtime()) + 60)
 
-        formpost_info = self.client.create_formpost(
+        formpost_info = self.behaviors.create_formpost(
             container_name,
             files,
             redirect=self.redirect_url,
@@ -220,7 +231,7 @@ class FormPostTest(ObjectStorageFixture):
 
         delete_after = 60
 
-        formpost_info = self.client.create_formpost(
+        formpost_info = self.behaviors.create_formpost(
             container_name,
             files,
             redirect=self.redirect_url,
@@ -257,7 +268,7 @@ class FormPostTest(ObjectStorageFixture):
                                                delete_after))
 
         # wait for the object to be deleted.
-        sleep(delete_after)
+        sleep(self.objectstorage_api_config.object_deletion_wait_interval)
 
         delete_response = self.client.get_object(container_name,
                                                  files[0].get("name"))
@@ -285,7 +296,7 @@ class FormPostTest(ObjectStorageFixture):
 
         files = [{'name': 'test_1'}, {'name': 'test_2'}]
 
-        formpost_info = self.client.create_formpost(
+        formpost_info = self.behaviors.create_formpost(
             container_name,
             files,
             redirect="",
@@ -341,14 +352,14 @@ class FormPostTest(ObjectStorageFixture):
             than the max_file_size.
 
         Expected Results:
-            Should return a 413 and no object should be created
+            Should return a 400 and no object should be created
         """
         container_name = self.create_temp_container(
             descriptor=CONTAINER_DESCRIPTOR)
 
         files = [{'name': 'foo1'}]
 
-        formpost_info = self.client.create_formpost(
+        formpost_info = self.behaviors.create_formpost(
             container_name,
             files,
             redirect="",
@@ -363,7 +374,7 @@ class FormPostTest(ObjectStorageFixture):
             requestslib_kwargs={'allow_redirects': False})
 
         method = 'Object FormPOST over max file size '
-        expected = 413
+        expected = 400
         received = formpost_response.status_code
 
         self.assertEqual(
@@ -400,17 +411,17 @@ class FormPostTest(ObjectStorageFixture):
         files = [{'name': 'foo1'}]
         expire_time = int(time() + 60)
 
-        formpost_info = self.client.create_formpost(
+        formpost_info = self.behaviors.create_formpost(
             container_name,
             files,
             redirect="",
             expires=expire_time,
-            max_file_size=10,
+            max_file_size=104857600,
             max_file_count=1,
             key=self.tempurl_key)
 
         # Wait for form to expire
-        sleep(65)
+        sleep(self.objectstorage_api_config.object_deletion_wait_interval)
 
         formpost_response = self.http_client.post(
             formpost_info.get('target_url'),
@@ -455,7 +466,7 @@ class FormPostTest(ObjectStorageFixture):
 
         files = [{'name': 'foo1'}]
 
-        formpost_info = self.client.create_formpost(
+        formpost_info = self.behaviors.create_formpost(
             container_name,
             files,
             redirect="",
@@ -492,3 +503,52 @@ class FormPostTest(ObjectStorageFixture):
                                  files[0].get("name"),
                                  404,
                                  object_response.status_code))
+
+    @ObjectStorageFixture.required_features('formpost')
+    def test_object_formpost_to_nonexistent_container(self):
+        """
+        Scenario:
+            Try to FormPOST, using a redirect, to a container that doesn't
+            exist.
+
+        Expected Results:
+            The FormPOST will return a 303 but the location header will
+            include a status code of 404. The object should not be created
+            and a GET on it should return a 404.
+        """
+
+        files = [{'name': 'foo1'}]
+
+        formpost_info = self.behaviors.create_formpost(
+            "not_a_container",
+            files,
+            redirect=self.redirect_url,
+            max_file_size=104857600,
+            max_file_count=1,
+            key=self.tempurl_key)
+
+        formpost_response = self.http_client.post(
+            formpost_info.get('target_url'),
+            headers=formpost_info.get('headers'),
+            data=formpost_info.get('body'),
+            requestslib_kwargs={'allow_redirects': False})
+
+        self.assertIn("location",
+                      formpost_response.headers,
+                      msg="Could not find a redirect location in response "
+                          "headers: {0}".format(formpost_response.headers))
+
+        self.assertIn("status=404",
+                      formpost_response.headers.get("location"),
+                      msg="Expected to be redirected with a status code of "
+                          "404, received {0}".format(
+                              formpost_response.headers.get("location")))
+
+        object_response = self.client.get_object("not_a_container",
+                                                 files[0].get("name"))
+
+        self.assertEqual(404,
+                         object_response.status_code,
+                         msg="GET on object expected status code of {0}, "
+                             "received {1}".format(
+                                 "404", object_response.status_code))

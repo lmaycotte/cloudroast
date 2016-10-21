@@ -15,6 +15,8 @@ limitations under the License.
 """
 import json
 
+from cloudcafe.objectstorage.objectstorage_api.common.constants import \
+    Constants
 from cloudroast.objectstorage.fixtures import ObjectStorageFixture
 
 CONTENT_TYPE_TEXT = "text/plain; charset=UTF-8"
@@ -29,7 +31,7 @@ class DelimiterTest(ObjectStorageFixture):
         cls.container_name = CONTAINER_NAME
         cls.client.create_container(cls.container_name)
 
-        cls.object_data = cls.behaviors.VALID_OBJECT_DATA
+        cls.object_data = Constants.VALID_OBJECT_DATA
         cls.content_length = str(len(cls.object_data))
         cls.headers = {"Content-Length": cls.content_length,
                        "Content-Type": CONTENT_TYPE_TEXT}
@@ -81,13 +83,13 @@ class DelimiterTest(ObjectStorageFixture):
                 continue
 
         expected = len(obj_names)
-        recieved = len(parsed_content)
+        received = len(parsed_content)
 
         self.assertEqual(
             expected,
-            recieved,
-            msg="expected {0} objects in the response body, recieved"
-                " {1}".format(expected, recieved))
+            received,
+            msg="expected {0} objects in the response body, received"
+                " {1}".format(expected, received))
 
         for obj_name in obj_names:
             tokens = obj_name.split('/')

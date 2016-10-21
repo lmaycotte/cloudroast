@@ -1,5 +1,5 @@
 """
-Copyright 2013 Rackspace
+Copyright 2015 Rackspace
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@ limitations under the License.
 """
 
 from cafe.drivers.unittest.decorators import tags
-from cloudcafe.compute.common.exceptions import ActionInProgress, BadRequest
+from cloudcafe.common.tools.datagen import rand_name
+from cloudcafe.compute.common.exceptions import ActionInProgress
 from cloudcafe.compute.common.types import NovaServerRebootTypes
 
 from cloudroast.compute.fixtures import ComputeAdminFixture
@@ -25,34 +26,83 @@ class LockServerTests(ComputeAdminFixture):
 
     @classmethod
     def setUpClass(cls):
+        """
+        Perform actions that setup the necessary resources for testing.
+
+        The following resources are accessed from a parent class:
+            - An instance from LockServerTests.
+
+        The following resources are created during this setup:
+            - Create a server from server behaviors.
+            - Locks the same server in setup.
+
+        """
         super(LockServerTests, cls).setUpClass()
-        cls.server = cls.server_behaviors.create_active_server().entity
+        key_resp = cls.keypairs_client.create_keypair(rand_name("key"))
+        assert key_resp.status_code is 200
+        cls.key = key_resp.entity
+        cls.resources.add(cls.key.name,
+                          cls.keypairs_client.delete_keypair)
+        cls.server = cls.server_behaviors.create_active_server(
+            key_name=cls.key.name).entity
         cls.resources.add(cls.server.id, cls.servers_client.delete_server)
         cls.admin_servers_client.lock_server(cls.server.id)
 
     @classmethod
     def tearDownClass(cls):
+        """
+        Perform actions that allow for the cleanup of any generated resources.
+
+        The following resources are deleted during this tear down:
+            - The server locked in setup is now unlocked.
+        """
         super(LockServerTests, cls).tearDownClass()
         cls.admin_servers_client.unlock_server(cls.server.id)
 
     @tags(type='smoke', net='no')
     def test_cannot_delete_locked_server(self):
-        """Verify that a locked server cannot be deleted"""
+        """
+        Verify that a locked server cannot be deleted
+
+        Validate that the server can not be deleted when it is in a locked state.
+
+        The following assertions occur:
+            - The delete server request raises a 'Action In Progress'
+              error when given a server id that is in a locked state.
+        """
 
         with self.assertRaises(ActionInProgress):
             self.servers_client.delete_server(self.server.id)
 
     @tags(type='smoke', net='no')
     def test_cannot_change_password_of_locked_server(self):
-        """Verify that the password of a locked server cannot be changed"""
+        """
+        Verify that the password of a locked server cannot be changed.
 
-        with self.assertRaises(BadRequest):
+        Validate that the server can not change the password using the
+        server id as the parameter.
+
+        The following assertions occur:
+            - The change server password request raises a 'Bad Request'
+              error when given a server id that is in a locked state.
+        """
+
+        with self.assertRaises(ActionInProgress):
             self.servers_client.change_password(self.server.id,
                                                 '123abcABC!!')
 
     @tags(type='smoke', net='no')
     def test_cannot_reboot_locked_server(self):
-        """Verify that a locked server cannot be rebooted"""
+        """
+        Verify that a locked server cannot be rebooted.
+
+        Validate that the server can not be rebooted using the
+        soft nova server reboot type.
+
+        The following assertions occur:
+            - The change server password request raises a 'Bad Request'
+              error when given a server id that is in a locked state.
+        """
 
         with self.assertRaises(ActionInProgress):
             self.servers_client.reboot(self.server.id,
@@ -60,14 +110,32 @@ class LockServerTests(ComputeAdminFixture):
 
     @tags(type='smoke', net='no')
     def test_cannot_rebuild_locked_server(self):
-        """Verify that a locked server cannot be rebuilt"""
+        """
+        Verify that a locked server cannot be rebuilt.
+
+        Validate that the server can not be rebuilt with the same image
+        as the original.
+
+        The following assertions occur:
+            - The rebuild server request raises a 'Action In Progress'
+              error when given a server id that is in a locked state.
+        """
 
         with self.assertRaises(ActionInProgress):
             self.servers_client.rebuild(self.server.id, self.image_ref)
 
     @tags(type='smoke', net='no')
     def test_cannot_resize_locked_server(self):
-        """Verify that a locked server cannot be resized"""
+        """
+        Verify that a locked server cannot be resized.
+
+        Validate that the server can not be resized with the same flavor
+        as the original.
+
+        The following assertions occur:
+            - The resize server request raises a 'Action In Progress'
+              error when given a server id that is in a locked state.
+        """
 
         with self.assertRaises(ActionInProgress):
             self.servers_client.resize(self.server.id, self.flavor_ref)

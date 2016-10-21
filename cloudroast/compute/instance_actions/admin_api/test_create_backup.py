@@ -1,5 +1,5 @@
 """
-Copyright 2013 Rackspace
+Copyright 2015 Rackspace
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ limitations under the License.
 import unittest
 
 from cafe.drivers.unittest.decorators import tags
+from cloudcafe.common.tools.datagen import rand_name
 from cloudcafe.compute.common.types import BackupTypes
 
 from cloudroast.compute.fixtures import ComputeAdminFixture
@@ -27,13 +28,34 @@ class CreateBackupTests(ComputeAdminFixture):
 
     @classmethod
     def setUpClass(cls):
+        """
+        Perform actions that setup the necessary resources for testing.
+
+        The following resources are created during this setup:
+            - A server with defaults defined in server behaviors.
+        """
         super(CreateBackupTests, cls).setUpClass()
-        cls.server = cls.server_behaviors.create_active_server().entity
+        key_resp = cls.keypairs_client.create_keypair(rand_name("key"))
+        assert key_resp.status_code is 200, ("Create keypair failed with response "
+                                             "code {0}".format(key_resp.status_code))
+        cls.key = key_resp.entity
+        cls.resources.add(cls.key.name,
+                          cls.keypairs_client.delete_keypair)
+        cls.server = cls.server_behaviors.create_active_server(
+            key_name=cls.key.name).entity
         cls.resources.add(cls.server.id, cls.servers_client.delete_server)
 
     @tags(type='smoke', net='no')
     def test_create_backup_for_server(self):
-        """Verify that a backup can be created from a server"""
+        """
+        Verify that a backup can be created from a server.
+
+        Creates an active backup of the server with parameters of Daily backup
+        and keep 1 backup only.
+
+         The following assertions occur:
+            - The call to create the backup returns an entity.
+        """
 
         image_response = self.admin_images_behaviors.create_active_backup(
             self.server.id, BackupTypes.DAILY, "1")

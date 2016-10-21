@@ -1,5 +1,5 @@
 """
-Copyright 2013 Rackspace
+Copyright 2015 Rackspace
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from unittest2.suite import TestSuite
+from unittest.suite import TestSuite
 
 from cafe.drivers.unittest.decorators import tags
+from cloudcafe.common.tools.datagen import rand_name
 from cloudcafe.blockstorage.volumes_api.v1.models import statuses
 from cloudroast.compute.fixtures import BlockstorageIntegrationFixture
 
@@ -34,8 +35,23 @@ class CreateServerVolumeIntegrationTest(BlockstorageIntegrationFixture):
 
     @classmethod
     def setUpClass(cls):
+        """
+        Perform actions that setup the necessary resources for testing.
+
+        The following resources are created during this setup:
+            - Create an active server.
+            - Create an available volume.
+            - Defines device to /dev/xvdm.
+            - Defines mount directory to /mnt/test.
+            - Defines filesystem type to ext3.
+
+        """
         super(CreateServerVolumeIntegrationTest, cls).setUpClass()
-        cls.server = cls.server_behaviors.create_active_server().entity
+        cls.key = cls.keypairs_client.create_keypair(rand_name("key")).entity
+        cls.resources.add(cls.key.name,
+                          cls.keypairs_client.delete_keypair)
+        cls.server = cls.server_behaviors.create_active_server(
+            key_name=cls.key.name).entity
         cls.resources.add(cls.server.id,
                           cls.servers_client.delete_server)
         cls.volume = cls.blockstorage_behavior.create_available_volume(
@@ -50,6 +66,13 @@ class CreateServerVolumeIntegrationTest(BlockstorageIntegrationFixture):
 
     @classmethod
     def tearDownClass(cls):
+        """
+        Perform actions that teardown the necessary resources for testing.
+
+        The following resources are released during this teardown:
+            - Deletes the volume attached to the server.
+
+        """
         cls.volume_attachments_client.delete_volume_attachment(
             cls.volume.id_, cls.server.id)
         cls.blockstorage_behavior.wait_for_volume_status(
@@ -59,7 +82,12 @@ class CreateServerVolumeIntegrationTest(BlockstorageIntegrationFixture):
 
     @tags(type='smoke', net='no')
     def test_attach_volume_to_server(self):
-        """Verify that a volume can be attached to a server."""
+        """
+        Verify that a volume can be attached to a server.
+
+        Will attach an already created volume to a server and then waits
+        for the volume status to change status to "In Use".
+        """
         self.volume_attachments_client.attach_volume(
             self.server.id, self.volume.id_, device=self.device)
         self.blockstorage_behavior.wait_for_volume_status(
@@ -68,9 +96,21 @@ class CreateServerVolumeIntegrationTest(BlockstorageIntegrationFixture):
 
     @tags(type='smoke', net='yes')
     def test_format_and_mount_volume(self):
-        """Verify that the volume can be formatted and mounted."""
+        """
+        Verify that the volume can be formatted and mounted.
+
+        Will get the remote instance and then get all disks attached to the
+        server.  It will make sure the correct disk is in the list and that
+        the volume is of the correct size.  It will then format the disk and
+        create a directory followed by mounting the disk.  Finally it will
+        un-mount the disk.
+
+        The following assertions occur:
+            - The disk is in the disks retrieved from the server.
+            - The size of the disk is the size defined.
+        """
         remote_client = self.server_behaviors.get_remote_instance_client(
-            self.server, self.servers_config)
+            self.server, self.servers_config, key=self.key.private_key)
         disks = remote_client.get_all_disks()
         self.assertIn(self.device, disks.keys())
         self.assertEqual(disks.get(self.device), self.volume_size)

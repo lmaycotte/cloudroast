@@ -25,8 +25,8 @@ class ObjectStorageUser(object):
         self.passwd = password
         self.token = None
         self.storage_url = None
-        self.objstorage_client = None
-        self.objstorage_behaviors = None
+        self.client = None
+        self.behaviors = None
         self.roles = []
 
 
@@ -162,7 +162,7 @@ class ObjectStorageFixture(BaseTestFixture):
         super(ObjectStorageFixture, cls).setUpClass()
         object_storage_api = ObjectStorageComposite()
 
-        cls.auth_data = object_storage_api.auth_info
+        cls.auth_info = object_storage_api.auth_info
         cls.objectstorage_api_config = object_storage_api.config
         cls.storage_url = object_storage_api.storage_url
         cls.auth_token = object_storage_api.auth_token

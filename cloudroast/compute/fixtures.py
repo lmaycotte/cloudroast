@@ -26,6 +26,7 @@ from cloudcafe.compute.composites import ComputeComposite, \
 from cloudcafe.compute.common.exception_handler import ExceptionHandler
 from cloudcafe.compute.common.clients.ping import PingClient
 from cloudcafe.compute.common.exceptions import ServerUnreachable
+from cloudcafe.objectstorage.composites import ObjectStorageComposite
 
 
 class ComputeFixture(BaseTestFixture):
@@ -65,6 +66,7 @@ class ComputeFixture(BaseTestFixture):
             cls.servers_config.personality_file_injection_enabled
         cls.keep_resources_on_failure =\
             cls.servers_config.keep_resources_on_failure
+        cls.compute_exception_handler = ExceptionHandler()
 
         # Clients
         cls.flavors_client = cls.compute.flavors.client
@@ -84,14 +86,15 @@ class ComputeFixture(BaseTestFixture):
         cls.volume_server_behaviors = cls.compute.boot_from_volume.behaviors
         cls.image_behaviors = cls.compute.images.behaviors
         cls.config_drive_behaviors = cls.compute.config_drive.behaviors
-        cls.flavors_client.add_exception_handler(ExceptionHandler())
+        cls.flavors_client.add_exception_handler(cls.compute_exception_handler)
         cls.resources = ResourcePool()
         cls.addClassCleanup(cls.resources.release)
 
     @classmethod
     def tearDownClass(cls):
         super(ComputeFixture, cls).tearDownClass()
-        cls.flavors_client.delete_exception_handler(ExceptionHandler())
+        cls.flavors_client.delete_exception_handler(
+            cls.compute_exception_handler)
 
     def tearDown(self):
         super(ComputeFixture, self).tearDown()
@@ -135,6 +138,26 @@ class ComputeFixture(BaseTestFixture):
                                              action.request_id,
                                              request_id))
         self.assertIsNone(action.message)
+
+    @classmethod
+    def get_accessible_ip_address(cls, server):
+        """
+        @summary: Get the IP address of an instance based on the configuration
+            (IPv4 or IPv6) and check if the ip is reachable
+        @param server: Server instance
+        @type server: Server object
+        @return: IP
+        @rtype: string
+        """
+
+        address = server.addresses.get_by_name(
+            cls.servers_config.network_for_ssh)
+        version = cls.servers_config.ip_address_version_for_ssh
+
+        ping_ip = address.ipv4 if version == 4 else address.ipv6
+        cls.verify_server_reachable(ping_ip)
+
+        return ping_ip
 
     @classmethod
     def verify_server_reachable(cls, ip=None):
@@ -196,6 +219,7 @@ class ComputeAdminFixture(ComputeFixture):
         super(ComputeAdminFixture, cls).setUpClass()
         cls.compute_admin = ComputeAdminComposite()
 
+        cls.admin_rescue_client = cls.compute_admin.rescue.client
         cls.admin_flavors_client = cls.compute_admin.flavors.client
         cls.admin_servers_client = cls.compute_admin.servers.client
         cls.admin_images_client = cls.compute_admin.images.client
@@ -228,6 +252,16 @@ class BlockstorageIntegrationFixture(ComputeFixture):
         cls.volume_create_timeout = volumes.config.volume_create_max_timeout
         cls.blockstorage_client = volumes.client
         cls.blockstorage_behavior = volumes.behaviors
+
+
+class ObjectstorageIntegrationFixture(ComputeFixture):
+
+    @classmethod
+    def setUpClass(cls):
+        super(ObjectstorageIntegrationFixture, cls).setUpClass()
+        cls.object_storage_api = ObjectStorageComposite()
+        cls.object_storage_client = cls.object_storage_api.client
+        cls.object_storage_behaviors = cls.object_storage_api.behaviors
 
 
 class ServerFromImageFixture(ComputeFixture):
